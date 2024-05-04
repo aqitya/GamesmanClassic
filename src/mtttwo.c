@@ -68,8 +68,6 @@ int getOption();
 void setOption(int option);
 MULTIPARTEDGELIST* GenerateMultipartMoveEdges(POSITION position, MOVELIST *moveList, POSITIONLIST *positionList);
 
-POSITION GetCanonicalPositionTest(POSITION position, POSITION *symmetricTo);
-
 /*************************************************************************
 **
 ** Every variable declared here is only used in this file (game-specific)
@@ -228,6 +226,7 @@ void InitializeGame() {
 	/********************************/
 
 	gCanonicalPosition = GetCanonicalPosition;
+  gSymmetries = TRUE;
 
 	kSupportsTierGamesman = TRUE;
 	kExclusivelyTierGamesman = TRUE;
@@ -242,7 +241,6 @@ void InitializeGame() {
 
   gInitialTier = 0;
   gInitialTierPosition = 4; // Hash of the initial position in the initial tier
-  //gInitialPosition = gInitialTierPosition;
 }
 
 POSITION hash(char *board, int xPlaced, int oPlaced, int gridPos, char turn) {
@@ -460,43 +458,12 @@ MOVELIST *GenerateMoves(POSITION position) {
 }
 
 POSITION DoSymmetry(int symmetry, char *originalBoard, int xPlaced, int oPlaced, int gridPos, char turn) {
-
 	char symBoard[boardSize];
-  int symGridPos;
-
   for (int i = 0; i < boardSize; i++) {
     symBoard[gSymmetryMatrix[symmetry][i]] = originalBoard[i];
   }
-  symGridPos = gSymmetryMatrix[symmetry][gridPos];
-
+  int symGridPos = gSymmetryMatrix[symmetry][gridPos];
   return hash(symBoard, xPlaced, oPlaced, symGridPos, turn);
-}
-
-POSITION GetCanonicalPositionTest(POSITION position, POSITION *symmetricTo) {
-  char turn;
-	int xPlaced, oPlaced, gridPos;
-  char originalBoard[boardSize];
-	unhash(position, originalBoard, &xPlaced, &oPlaced, &gridPos, &turn);
-  POSITION canonPos = position;
-  for (int i = 0; i < 8; i++) {
-    POSITION symPos = DoSymmetry(i, originalBoard, xPlaced, oPlaced, gridPos, turn);
-    symmetricTo[i] = symPos;
-    if (symPos < canonPos) canonPos = symPos;
-  }
-  if (xPlaced >= 2 && xPlaced == oPlaced) {
-    for (int i = 0; i < 25; i++) {
-      if (originalBoard[i] != BLANK) {
-        originalBoard[i] = (originalBoard[i] == X) ? O : X;
-      }
-    }
-    turn = (turn == X) ? O : X;
-    for (int i = 0; i < 8; i++) {
-      POSITION symPos = DoSymmetry(i, originalBoard, xPlaced, oPlaced, gridPos, turn);
-      symmetricTo[i + 8] = symPos;
-      if (symPos < canonPos) canonPos = symPos;
-    }
-  }
-  return canonPos;
 }
 
 /**
@@ -519,20 +486,33 @@ POSITION GetCanonicalPosition(POSITION position) {
   char originalBoard[boardSize];
 	unhash(position, originalBoard, &xPlaced, &oPlaced, &gridPos, &turn);
   POSITION canonPos = position;
-  for (int i = 0; i < 8; i++) {
-    POSITION symPos = DoSymmetry(i, originalBoard, xPlaced, oPlaced, gridPos, turn);
-    if (symPos < canonPos) canonPos = symPos;
+  POSITION symPos;
+  int i;
+  // First, we will check rotation/reflection symmetries.
+  for (i = 0; i < 8; i++) {
+    symPos = DoSymmetry(i, originalBoard, xPlaced, oPlaced, gridPos, turn);
+    if (symPos < canonPos) {
+      canonPos = symPos;
+    }
   }
-  if (xPlaced >= 2 && xPlaced == oPlaced) {
-    for (int i = 0; i < 25; i++) {
+  // If we have the same number of X's and O's and we are in a
+  // placing-not-mandatory tier (i.e., oPlaced >= 2), then we
+  // will also check color-and-turn symmetries. If tier-symmetries
+  // were supported, then we would be able to do this for any
+  // placing-not-mandatory tier even if xPlaced != oPlaced, but
+  // unfortunately we don't have tier-symmetries supported. 
+  if (oPlaced >= 2 && xPlaced == oPlaced) {
+    for (i = 0; i < boardSize; i++) {
       if (originalBoard[i] != BLANK) {
         originalBoard[i] = (originalBoard[i] == X) ? O : X;
       }
     }
     turn = (turn == X) ? O : X;
-    for (int i = 0; i < 8; i++) {
-      POSITION symPos = DoSymmetry(i, originalBoard, xPlaced, oPlaced, gridPos, turn);
-      if (symPos < canonPos) canonPos = symPos;
+    for (i = 0; i < 8; i++) {
+      symPos = DoSymmetry(i, originalBoard, xPlaced, oPlaced, gridPos, turn);
+      if (symPos < canonPos) {
+        canonPos = symPos;
+      }
     }
   }
   return canonPos;
