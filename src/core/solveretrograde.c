@@ -1209,93 +1209,51 @@ BOOLEAN dedupHashAdd(POSITION pos) {
 ************************************************************************/
 
 void SolveWithLoopyAlgorithm(POSITION start, POSITION end) {
-	BOOLEAN partialSolve = FALSE;
-	if (start != 0 || end != gCurrentTierSize) // we're only solving a partial tier!
-		partialSolve = TRUE;
 	ifprintf(gTierSolvePrint, "\n-----PREPARING LOOPY SOLVER-----\n");
-	POSITION pos, posSaver, canonPos, child;
-	POSITIONLIST* tmp;
+	POSITION pos, canonPos, child;
 	MOVELIST *moves, *movesptr;
 	VALUE value;
 	REMOTENESS remoteness;
 
-	BOOLEAN usingLevelFiles = FALSE;
-	if (levelFiles && l_levelFileExists(gCurrentTier)) {
-		ifprintf(gTierSolvePrint, "FOUND A LEVEL FILE FOR THIS TIER! Using it to solve...\n");
-		POSITION min, max;
-		if (!l_readFullLevelFile(&min, &max))
-			printf("ERROR: Level file couldn't load! Skipping their use...");
-		else {
-			usingLevelFiles = TRUE;
-			if (min > start) start = min;
-			if (max < end) end = max;
-		}
-	}
-
-	//int i,numMoves; // the generateMovesEfficient stuff is commented out for now
 	ifprintf(gTierSolvePrint, "--Setting up Child Counters and Frontier Hashtables...\n");
 	rInitFRStuff();
 	ifprintf(gTierSolvePrint, "--Doing a sweep of the tier, and setting up the frontier...\n");
 	for (pos = start; pos < end; pos++) { // SET UP PARENTS
-		posSaver = pos;
-solve_start: // GASP!! A LABEL!!
 		if (childCounts[pos] == 0) { // else, ignore this child, it was already solved
-			if (usingLevelFiles && !l_isInLevelFile(pos)) continue; //just skip
-			if (checkLegality && !gIsLegalFunPtr(pos)) continue; //skip
-			if (gSymmetries && pos != gCanonicalPosition(pos))
-				continue; // skip, since we'll do canon one later
-			trueSizeOfTier++;
-			value = Primitive(pos);
-			if (value != undecided) { // check for primitive-ness
-				SetRemoteness(pos,0);
-				StoreValueOfPosition(pos,value);
-				numSolved++;
-				rInsertFR(value, pos, 0);
-			} else {
-				//if (gGenerateMovesEfficientFunPtr == NULL) { // do the normal stuff
-				moves = movesptr = GenerateMoves(pos);
-				if (dedupHash != NULL) {
-					dedupHashElem = 0LL;
-					memset(dedupHash, 0, dedupHashBytes);
-				}
-				if (moves == NULL) { // no chillins
-					printf("ERROR: GenerateMoves on %llu returned NULL\n", pos);
-					ExitStageRight();
+			if (!gSymmetries || pos == gCanonicalPosition(pos)) {
+				trueSizeOfTier++;
+				value = Primitive(pos);
+				if (value != undecided) { // check for primitive-ness
+					SetRemoteness(pos,0);
+					StoreValueOfPosition(pos,value);
+					numSolved++;
+					rInsertFR(value, pos, 0);
 				} else {
-					//otherwise, make a Child Counter for it
-					movesptr = moves;
-                    for (; movesptr != NULL; movesptr = movesptr->next) {
-                    	child = gSymmetries ? gCanonicalPosition(DoMove(pos, movesptr->move)) : DoMove(pos, movesptr->move);
-						if (gSymmetries && useUndo && !dedupHashAdd(child)) continue;
-						childCounts[pos]++;
+					moves = movesptr = GenerateMoves(pos);
+					if (dedupHash != NULL) {
+						dedupHashElem = 0LL;
+						memset(dedupHash, 0, dedupHashBytes);
+					}
+					if (moves == NULL) { // no chillins
+						printf("ERROR: GenerateMoves on %llu returned NULL\n", pos);
+						ExitStageRight();
+					} else {
+						//otherwise, make a Child Counter for it
+						movesptr = moves;
+						for (; movesptr != NULL; movesptr = movesptr->next) {
+							child = gSymmetries ? gCanonicalPosition(DoMove(pos, movesptr->move)) : DoMove(pos, movesptr->move);
+							if (gSymmetries && useUndo && !dedupHashAdd(child)) continue;
+							childCounts[pos]++;
 
-                    	// here's the "partial solving" complication: to solve a position,
-                    	// we might have to solve another in this tier that's not part of our
-                    	// bounds! So, we need to run this loop for those guys too. To do this,
-                    	// we maintain a list of guys to run it for too.
-                    	// It uses the childCounts to ensure no duplicate iterations
-                    	if (partialSolve && child < gCurrentTierSize && childCounts[child] == 0 && (child < start || child >= end)) {
-                        	solveTheseTooList = StorePositionInList(child, solveTheseTooList);
-                    	}
-                    	if (!useUndo) { // if parent pointers, add to parent pointer list
-                        	rParents[child] = StorePositionInList(pos, rParents[child]);
-                    	}
-                    }
-                    FreeMoveList(moves);
+							if (!useUndo) { // if parent pointers, add to parent pointer list
+								rParents[child] = StorePositionInList(pos, rParents[child]);
+							}
+						}
+						FreeMoveList(moves);
+					}
 				}
 			}
 		}
-		// before ending the for-loop, we need to go through the solveTheseTooList
-		if (partialSolve && solveTheseTooList != NULL) {
-			// remove from head
-			tmp = solveTheseTooList;
-			pos = tmp->position;
-			solveTheseTooList = tmp->next;
-			SafeFree(tmp);
-			// now, iterate for the new pos
-			goto solve_start; // HOLY CRAP, A GOTO!
-		}
-		pos = posSaver;
 	}
 	if (checkLegality) {
 		ifprintf(gTierSolvePrint, "True size of tier: %lld\n",trueSizeOfTier);
@@ -1309,7 +1267,6 @@ solve_start: // GASP!! A LABEL!!
 	// SET UP FRONTIER!
 	ifprintf(gTierSolvePrint, "--Doing a sweep of child tiers, and setting up the frontier...\n");
 	for (pos = gCurrentTierSize; pos < gNumberOfPositions; pos++) {
-		if (usingLevelFiles && !l_isInLevelFile(pos)) continue; //just skip
 		if (!useUndo && rParents[pos] == NULL) // if we didn't even see this child, don't put it on frontier!
 			continue;
 		if (gSymmetries) {// use the canonical position's values
@@ -1326,7 +1283,6 @@ solve_start: // GASP!! A LABEL!!
 			rInsertFR(value, pos, remoteness);
 	}
 	tierdb_free_childpositions();
-	if (usingLevelFiles) l_freeBitArray();
 	ifprintf(gTierSolvePrint, "\n--Beginning the loopy algorithm...\n");
 	REMOTENESS r; IPOSITIONLIST* list;
 	ifprintf(gTierSolvePrint, "--Processing Lose/Win Frontiers!\n");

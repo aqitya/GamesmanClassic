@@ -303,7 +303,7 @@ void MoveToString(MOVE move, char *moveStringBuffer) {
  * @param computersName : The computer's name.
  */
 void PrintComputersMove(MOVE computersMove, STRING computersName) {
-    char *moveStringBuffer[32];
+    char moveStringBuffer[32];
     MoveToString(computersMove, moveStringBuffer);
     printf("%s's move: %s\n", computersName, moveStringBuffer);
 }

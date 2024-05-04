@@ -406,7 +406,7 @@ void MoveToString(MOVE move, char *moveStringBuffer) {
  * @param computersName : The computer's name.
  */
 void PrintComputersMove(MOVE computersMove, STRING computersName) {
-    char *moveStringBuffer[32];
+    char moveStringBuffer[32];
     MoveToString(computersMove, moveStringBuffer);
     printf("%s's move: %s\n", computersName, moveStringBuffer);
 }
@@ -441,8 +441,7 @@ int getOption(void) {
  * 
  * @param option An ID specifying the variant that we want to change to.
  */
-void setOption(int option) {
-}
+void setOption(int option) { (void) option; }
 
 /**
  * @brief Interactive menu used to change the variant, i.e., change 
