@@ -804,8 +804,7 @@ void SolveWithLoopyAlgorithm() {
 				trueSizeOfTier++;
 				value = Primitive(pos);
 				if (value != undecided) { // check for primitive-ness
-					SetRemoteness(pos, 0);
-					SetValue(pos, value);
+					tierdbSetValueAndRemoteness(pos, value, 0);
 					numSolved++;
 					rInsertFR(value, pos, 0);
 				} else {
