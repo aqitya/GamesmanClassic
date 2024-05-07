@@ -361,7 +361,7 @@ AddSlot(
 	return value;
 }
 
-VALUE StoreValueOfPosition(POSITION position, VALUE value)
+VALUE SetValue(POSITION position, VALUE value)
 {
 	showStatus(Update);
 

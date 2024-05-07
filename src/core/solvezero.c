@@ -45,7 +45,7 @@
 **					(this depends on the size of VALUE)
 **			  plus whatever the movelist adds, varies per parent (possibly big)
 **
-**  Calls: StoreValueOfPosition, GetValueOfPosition
+**  Calls: SetValue, GetValueOfPosition
 **		   MarkAsVisited, Visited
 **         GenerateMoves, DoMove, FreeMoveList
 **		   Remoteness, SetRemoteness
@@ -92,7 +92,7 @@ VALUE DetermineZeroValue(POSITION position)
 	//if (gTwoBits)
 	//    InitializeVisitedArray();
 
-	StoreValueOfPosition(position,Primitive(position));
+	SetValue(position,Primitive(position));
 	MarkAsVisited(position);
 	oldNumUndecided = 0;
 	numUndecided = 1;
@@ -121,7 +121,7 @@ VALUE DetermineZeroValue(POSITION position)
 							childValue = Primitive(child);
 							numNew++;
 							MarkAsVisited(child);
-							StoreValueOfPosition(child,childValue);
+							SetValue(child,childValue);
 							if(childValue != undecided) {
 								SetRemoteness(child,0);
 							}
@@ -130,7 +130,7 @@ VALUE DetermineZeroValue(POSITION position)
 						}
 
 						if(childValue == lose) {
-							StoreValueOfPosition(i,win);
+							SetValue(i,win);
 							if(Remoteness(i) > Remoteness(child)+1)
 								SetRemoteness(i,Remoteness(child)+1);
 						}
@@ -154,10 +154,10 @@ VALUE DetermineZeroValue(POSITION position)
 					if((numTot != 0) && (numTot == numWin + numTie)) {
 						if(numTie == 0) {
 							SetRemoteness(i, winRemoteness+1);
-							StoreValueOfPosition(i,lose);
+							SetValue(i,lose);
 						}else{
 							SetRemoteness(i, tieRemoteness+1);
-							StoreValueOfPosition(i,tie);
+							SetValue(i,tie);
 						}
 					}
 
@@ -176,7 +176,7 @@ VALUE DetermineZeroValue(POSITION position)
 	for(i = 0; i < gNumberOfPositions; i++) {
 		if(Visited(i) && (GetValueOfPosition(i) == undecided)) {
 			SetRemoteness(i,REMOTENESS_MAX);
-			StoreValueOfPosition(i, tie);
+			SetValue(i, tie);
 		}
 		UnMarkAsVisited(i);
 	}

@@ -37,10 +37,10 @@
    -Max
  */
 
+#include "gamesman.h"
 #include <zlib.h>
 #include <netinet/in.h>
 #include <sys/stat.h>
-#include "gamesman.h"
 #include <dirent.h>
 #include "tierdb.h"
 
@@ -99,45 +99,38 @@ tierdb_cellValue*       tierdb_array;
 #define TIERDB_OUTFILENAME_LENGTH_MAX 160
 char tierdb_outfilename[TIERDB_OUTFILENAME_LENGTH_MAX];
 char tierdb_lookupfilename[80];
-gzFile         tierdb_filep;
+gzFile tierdb_filep;
 short tierdb_dbVer[1];
 POSITION tierdb_numPos[1];
 int tierdb_goodCompression, tierdb_goodDecompression, tierdb_goodClose;
 
-/*
-** Code
-*/
+void tierdb_init(DB_Table *new_db) {
+	if (!alreadyReinitialized) {
+		tierdb_get_raw = tierdb_get_raw_ptr;
 
-void tierdb_init(DB_Table *new_db)
-{
-	if (alreadyReinitialized) {
-		return;
+		// Setup internal memory table
+		if (gLoadTierdbArray) {
+			tierdb_array = (tierdb_cellValue *) SafeMalloc(gNumberOfPositions * sizeof(tierdb_cellValue));
+
+			for (POSITION pos = 0; pos < gNumberOfPositions; pos++) {
+				tierdb_array[pos] = undecided;
+			}
+		}
+
+		new_db->put_value = tierdb_set_value;
+		new_db->put_remoteness = tierdb_set_remoteness;
+		new_db->mark_visited = tierdb_mark_visited;
+		new_db->unmark_visited = tierdb_unmark_visited;
+		new_db->put_mex = tierdb_set_mex;
+		new_db->free_db = tierdb_free;
+
+		new_db->get_value = tierdb_get_value;
+		new_db->get_remoteness = tierdb_get_remoteness;
+		new_db->check_visited = tierdb_check_visited;
+		new_db->get_mex = tierdb_get_mex;
+		new_db->save_database = tierdb_save_database;
+		new_db->load_database = tierdb_load_database;
 	}
-
-	POSITION i;
-	tierdb_get_raw = tierdb_get_raw_ptr;
-
-	//setup internal memory table
-	if (gLoadTierdbArray) {
-		tierdb_array = (tierdb_cellValue *) SafeMalloc (gNumberOfPositions * sizeof(tierdb_cellValue));
-
-		for(i = 0; i< gNumberOfPositions; i++)
-			tierdb_array[i] = undecided;
-	}
-
-	new_db->put_value = tierdb_set_value;
-	new_db->put_remoteness = tierdb_set_remoteness;
-	new_db->mark_visited = tierdb_mark_visited;
-	new_db->unmark_visited = tierdb_unmark_visited;
-	new_db->put_mex = tierdb_set_mex;
-	new_db->free_db = tierdb_free;
-
-	new_db->get_value = tierdb_get_value;
-	new_db->get_remoteness = tierdb_get_remoteness;
-	new_db->check_visited = tierdb_check_visited;
-	new_db->get_mex = tierdb_get_mex;
-	new_db->save_database = tierdb_save_database;
-	new_db->load_database = tierdb_load_database;
 }
 
 /*
@@ -145,8 +138,7 @@ Use getter functions that access the file directly if there
 exists a lookup table. If there is no lookup table, doesn't
 do anything.
 */
-BOOLEAN tierdb_reinit(DB_Table *new_db)
-{
+BOOLEAN tierdb_reinit(DB_Table *new_db) {
 	if (alreadyReinitialized) {
 		return TRUE;
 	}
@@ -166,25 +158,23 @@ BOOLEAN tierdb_reinit(DB_Table *new_db)
 	}
 }
 
-void tierdb_free_childpositions()
-{
-	if (tierdb_array)
+void tierdb_free_childpositions() {
+	if (tierdb_array) {
 		tierdb_array = (tierdb_cellValue *) SafeRealloc(tierdb_array, gCurrentTierSize * sizeof(tierdb_cellValue));
+	}
 }
 
-void tierdb_free()
-{
-	if(tierdb_array)
+void tierdb_free() {
+	if (tierdb_array) {
 		SafeFree(tierdb_array);
+	}
 }
 
-void tierdb_close_file()
-{
+void tierdb_close_file() {
 	tierdb_goodClose = gzclose(tierdb_filep);
 }
 
-tierdb_cellValue* tierdb_get_raw_ptr(POSITION pos)
-{
+tierdb_cellValue* tierdb_get_raw_ptr(POSITION pos) {
 	return (&tierdb_array[pos]);
 }
 
@@ -215,8 +205,7 @@ void load_offsets(TIER tier) {
 	tierForWhichOffsetsLoaded = tier;
 }
 
-tierdb_cellValue tierdb_get_raw_from_lookup_table(POSITION pos)
-{
+tierdb_cellValue tierdb_get_raw_from_lookup_table(POSITION pos) {
 	TIER tier;
 	TIERPOSITION tierposition;
 	gUnhashToTierPosition(pos, &tierposition, &tier);
@@ -255,19 +244,19 @@ tierdb_cellValue tierdb_get_raw_from_lookup_table(POSITION pos)
     return buf;
 }
 
-VALUE tierdb_set_value(POSITION pos, VALUE val)
-{
+VALUE tierdb_set_value(POSITION pos, VALUE val) {
 	tierdb_cellValue *ptr;
 
 	ptr = tierdb_get_raw(pos);
 
 	/* put it in the right position, but we have to blank field and then
 	** add new value to right slot, keeping old slots */
-	return (VALUE)((*ptr = (((int)*ptr & ~VALUE_MASK) | (val & VALUE_MASK))) & VALUE_MASK);
+	*ptr = (((int)*ptr & ~VALUE_MASK) | (val & VALUE_MASK));
+	return (VALUE) ((*ptr) & VALUE_MASK);
+	//return (VALUE)((*ptr = (((int)*ptr & ~VALUE_MASK) | (val & VALUE_MASK))) & VALUE_MASK);
 }
 
-VALUE tierdb_get_value(POSITION pos)
-{
+VALUE tierdb_get_value(POSITION pos) {
 	tierdb_cellValue *ptr;
 
 	ptr = tierdb_get_raw(pos);
@@ -275,13 +264,11 @@ VALUE tierdb_get_value(POSITION pos)
 	return((VALUE)((int)*ptr & VALUE_MASK)); /* return pure value */
 }
 
-VALUE tierdb_get_value_from_lookup_table(POSITION pos)
-{
+VALUE tierdb_get_value_from_lookup_table(POSITION pos) {
 	return (VALUE) (tierdb_get_raw_from_lookup_table(pos) & VALUE_MASK);
 }
 
-REMOTENESS tierdb_get_remoteness(POSITION pos)
-{
+REMOTENESS tierdb_get_remoteness(POSITION pos) {
 	tierdb_cellValue *ptr;
 
 	ptr = tierdb_get_raw(pos);
@@ -289,18 +276,16 @@ REMOTENESS tierdb_get_remoteness(POSITION pos)
 	return (REMOTENESS)((((int)*ptr & REMOTENESS_MASK) >> REMOTENESS_SHIFT));
 }
 
-REMOTENESS tierdb_get_remoteness_from_lookup_table(POSITION pos)
-{
+REMOTENESS tierdb_get_remoteness_from_lookup_table(POSITION pos) {
 	return (REMOTENESS) ((tierdb_get_raw_from_lookup_table(pos) & REMOTENESS_MASK) >> REMOTENESS_SHIFT);
 }
 
-void tierdb_set_remoteness (POSITION pos, REMOTENESS val)
-{
+void tierdb_set_remoteness(POSITION pos, REMOTENESS val) {
 	tierdb_cellValue *ptr;
 
 	ptr = tierdb_get_raw(pos);
 
-	if(val > REMOTENESS_MAX) {
+	if (val > REMOTENESS_MAX) {
 		printf("Remoteness request (%d) for " POSITION_FORMAT  " larger than Max Remoteness (%d)\n",val,pos,REMOTENESS_MAX);
 		ExitStageRight();
 		exit(0);
@@ -310,8 +295,19 @@ void tierdb_set_remoteness (POSITION pos, REMOTENESS val)
 	*ptr = (VALUE)(((int)*ptr & ~REMOTENESS_MASK) | (val << REMOTENESS_SHIFT));
 }
 
-BOOLEAN tierdb_check_visited(POSITION pos)
-{
+// We will assume that the value and remoteness are set ONCE
+void tierdbSetValueAndRemoteness(POSITION pos, VALUE v, REMOTENESS r) {
+	tierdb_cellValue *ptr = tierdb_get_raw(pos);
+	*ptr |= v | (r << REMOTENESS_SHIFT);
+}
+
+void tierdbGetValueAndRemoteness(POSITION pos, VALUE *v, REMOTENESS *r) {
+	tierdb_cellValue *ptr = tierdb_get_raw(pos);
+	*v = ((int)*ptr & VALUE_MASK);
+	*r = (((int)*ptr & REMOTENESS_MASK) >> REMOTENESS_SHIFT);
+}
+
+BOOLEAN tierdb_check_visited(POSITION pos) {
 	tierdb_cellValue *ptr;
 
 	ptr = tierdb_get_raw(pos);
@@ -319,13 +315,11 @@ BOOLEAN tierdb_check_visited(POSITION pos)
 	return (BOOLEAN)((((int)*ptr & VISITED_MASK) == VISITED_MASK)); /* Is bit set? */
 }
 
-BOOLEAN tierdb_check_visited_from_lookup_table(POSITION pos)
-{
+BOOLEAN tierdb_check_visited_from_lookup_table(POSITION pos) {
 	return (BOOLEAN) (((tierdb_get_raw_from_lookup_table(pos) & VISITED_MASK) == VISITED_MASK));
 }
 
-void tierdb_mark_visited (POSITION pos)
-{
+void tierdb_mark_visited(POSITION pos) {
 	tierdb_cellValue *ptr;
 
 	ptr = tierdb_get_raw(pos);
@@ -333,37 +327,25 @@ void tierdb_mark_visited (POSITION pos)
 	*ptr = (VALUE)((int)*ptr | VISITED_MASK);       /* Turn bit on */
 }
 
-void tierdb_unmark_visited (POSITION pos)
-{
+void tierdb_unmark_visited(POSITION pos) {
 	tierdb_cellValue *ptr;
-
 	ptr = tierdb_get_raw(pos);
-
-	//printf("unmark pos: %llu\n", pos);
-
 	*ptr = (VALUE)((int)*ptr & ~VISITED_MASK);      /* Turn bit off */
 }
 
-void tierdb_set_mex(POSITION pos, MEX mex)
-{
+void tierdb_set_mex(POSITION pos, MEX mex) {
 	tierdb_cellValue *ptr;
-
 	ptr = tierdb_get_raw(pos);
-
 	*ptr = (VALUE)(((int)*ptr & ~MEX_MASK) | (mex << MEX_SHIFT));
 }
 
-MEX tierdb_get_mex(POSITION pos)
-{
+MEX tierdb_get_mex(POSITION pos) {
 	tierdb_cellValue *ptr;
-
 	ptr = tierdb_get_raw(pos);
-
 	return (MEX)(((int)*ptr & MEX_MASK) >> MEX_SHIFT);
 }
 
-MEX tierdb_get_mex_from_lookup_table(POSITION pos)
-{
+MEX tierdb_get_mex_from_lookup_table(POSITION pos) {
 	return (MEX) ((tierdb_get_raw_from_lookup_table(pos) & MEX_MASK) >> MEX_SHIFT);
 }
 
@@ -397,8 +379,7 @@ MEX tierdb_get_mex_from_lookup_table(POSITION pos)
  */
 
 
-BOOLEAN tierdb_save_database ()
-{
+BOOLEAN tierdb_save_database() {
 	char tierdb_outfilename_partial[TIERDB_OUTFILENAME_PARTIAL_LENGTH_MAX];
 	struct stat statbuf;
 	statbuf.st_size = 0;
@@ -512,8 +493,7 @@ BOOLEAN tierdb_save_database ()
 ************
 ***********/
 
-BOOLEAN tierdb_load_database()
-{
+BOOLEAN tierdb_load_database() {
 	if(!gHashWindowInitialized)
 		return FALSE;
 

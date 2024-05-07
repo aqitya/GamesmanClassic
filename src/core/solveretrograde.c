@@ -115,15 +115,13 @@ VALUE DetermineRetrogradeValue(POSITION position) {
 		undoGiven = FALSE;
 	}
 	if (gUnDoMoveFunPtr == NULL) {
-		ifprintf(gTierSolvePrint, "-UnDoMove NOT GIVEN\nUndoMove Use Disabled\n");
+		ifprintf(gTierSolvePrint, "-UndoMove NOT GIVEN\nUndoMove Use Disabled\n");
 		undoGiven = FALSE;
 	}
 	if (gTierToStringFunPtr == NULL) {
 		ifprintf(gTierSolvePrint, "-TierToString NOT GIVEN\nTier Name Printing Disabled\n");
 		tierNames = FALSE;
 	}
-	if (isLegalGiven && undoGiven && tierNames)
-		ifprintf(gTierSolvePrint, "API Optional Functions Confirmed.\n");
 
 	ifprintf(gTierSolvePrint, "\n----- Checking and Generating the Tier Tree: -----\n\n");
 
@@ -586,12 +584,13 @@ IPOSITIONLIST* rRemoveFRList(VALUE value, REMOTENESS r) {
 void rInsertFR(VALUE value, POSITION position, REMOTENESS r) {
 	// this is probably the best place to put this:
 	assert(r >= 0 && r < REMOTENESS_MAX);
-	if(value == win)
+	if (value == win) {
 		rWinFR[r] = StorePositionInIList(position, rWinFR[r]);
-	else if (value == lose)
+	} else if (value == lose) {
 		rLoseFR[r] = StorePositionInIList(position, rLoseFR[r]);
-	else if (value == tie)
+	} else if (value == tie) {
 		rTieFR[r] = StorePositionInIList(position, rTieFR[r]);
+	}
 }
 
 
@@ -623,26 +622,32 @@ void SolveTier() {
 		SafeFree(tierStr);
 	}
 	ifprintf(gTierSolvePrint, "-----\n");
-	// print flags information
+
+	// Print flags information
 	ifprintf(gTierSolvePrint, "Size of current hash window: %llu\n",gNumberOfPositions);
 	ifprintf(gTierSolvePrint, "Size of tier %llu's hash: %llu\n",gCurrentTier,gCurrentTierSize);
 	ifprintf(gTierSolvePrint, "\nSolver Type: %sLOOPY\n",((forceLoopy||gCurrentTierIsLoopy) ? "" : "NON-"));
 	ifprintf(gTierSolvePrint, "Using Symmetries: %s\n",(gSymmetries ? "YES" : "NO"));
 	ifprintf(gTierSolvePrint, "Checking Legality (using IsLegal): %s\n",(checkLegality ? "YES" : "NO"));
-	// now actually SOLVE depending on which solver to use
-	if (forceLoopy || gCurrentTierIsLoopy) { // LOOPY SOLVER
+	
+	// Now actually SOLVE depending on which solver to use
+	if (gCurrentTierIsLoopy || forceLoopy) { // LOOPY SOLVER
 		ifprintf(gTierSolvePrint, "Using UndoMove Functions: %s\n",(useUndo ? "YES" : "NO"));
 		SolveWithLoopyAlgorithm();
 		ifprintf(gTierSolvePrint, "--Freeing Child Counters and Frontier Hashtables...\n");
 		rFreeFRStuff();
-	} else SolveWithNonLoopyAlgorithm(); // NON-LOOPY SOLVER
-	// successfully finished solving!
+	} else {
+		SolveWithNonLoopyAlgorithm(); // NON-LOOPY SOLVER
+	}
+
+	// Finished Solving Tier
 	ifprintf(gTierSolvePrint, "\nTier fully solved!\n");
 	if (checkCorrectness) {
 		ifprintf(gTierSolvePrint, "--Checking Correctness...\n");
 		checkForCorrectness();
 	}
-	// now save to database
+
+	// Attempt to Save Tier DB to File
 	ifprintf(gTierSolvePrint, "--Saving the Tier Database to File...\n");
 	if (SaveDatabase()) {
 		ifprintf (gTierSolvePrint, "Database successfully saved!\n");
@@ -655,63 +660,54 @@ void SolveTier() {
 void SolveWithNonLoopyAlgorithm() {
 	ifprintf(gTierSolvePrint, "\n-----PREPARING NON-LOOPY SOLVER-----\n");
 	POSITION pos, child;
-	MOVELIST *moves, *movesptr;
-	VALUE value;
-	REMOTENESS remoteness;
-	REMOTENESS maxWinRem, minLoseRem, minTieRem;
-	BOOLEAN seenLose, seenTie;
+	MOVELIST *moves, *movesPtr;
+	VALUE value, childValue;
+	REMOTENESS childRem;
+	REMOTENESS maxWinChildRem, minLoseChildRem, minTieChildRem;
+	BOOLEAN existsLoseChild, existsTieChild;
 
 	ifprintf(gTierSolvePrint, "Doing a sweep of the tier, and solving it in one go...\n");
 	for (pos = 0; pos < gCurrentTierSize; pos++) { // Solve only parents
 		if ((!checkLegality || gIsLegalFunPtr(pos)) && (!gSymmetries || pos == gCanonicalPosition(pos))) {
 			value = Primitive(pos);
 			if (value != undecided) { // check for primitive-ness
-				SetRemoteness(pos, 0);
-				StoreValueOfPosition(pos, value);
+				tierdbSetValueAndRemoteness(pos, value, 0);
 			} else {
-				moves = movesptr = GenerateMoves(pos);
-				maxWinRem = -1;
-				minLoseRem = minTieRem = REMOTENESS_MAX;
-				seenLose = seenTie = FALSE;
-				for (; movesptr != NULL; movesptr = movesptr->next) {
-					child = DoMove(pos, movesptr->move);
+				moves = GenerateMoves(pos);
+				maxWinChildRem = -1;
+				minLoseChildRem = minTieChildRem = REMOTENESS_MAX;
+				existsLoseChild = existsTieChild = FALSE;
+				for (movesPtr = moves; movesPtr != NULL; movesPtr = movesPtr->next) {
+					child = DoMove(pos, movesPtr->move);
 					if (gSymmetries) {
 						child = gCanonicalPosition(child);
 					}
-					value = GetValueOfPosition(child);
-					if (value != undecided) {
-						remoteness = Remoteness(child);
-						if (value == tie) {
-							seenTie = TRUE;
-							if (remoteness < minTieRem)
-								minTieRem = remoteness;
-							continue;
-						} else if (value == lose) {
-							seenLose = TRUE;
-							if (remoteness < minLoseRem)
-								minLoseRem = remoteness;
-							continue;
-						} else if (remoteness > maxWinRem) //win
-							maxWinRem = remoteness;
-					} else {
-						printf("ERROR: GenerateMoves on %llu found undecided child, %llu!\n", pos, child);
-						ExitStageRight();
-					}
-					FreeMoveList(moves);
-					if (seenLose) {
-						SetRemoteness(pos ,minLoseRem + 1);
-						StoreValueOfPosition(pos, win);
-					} else if (seenTie) {
-						if (minTieRem == REMOTENESS_MAX) {
-							SetRemoteness(pos, REMOTENESS_MAX); // a draw
-						} else {
-							SetRemoteness(pos, minTieRem + 1); // else a tie
+					tierdbGetValueAndRemoteness(child, &childValue, &childRem);
+					if (childValue == tie) {
+						existsTieChild = TRUE;
+						if (childRem < minTieChildRem) {
+							minTieChildRem = childRem;
 						}
-						StoreValueOfPosition(pos, tie);
-					} else {
-						SetRemoteness(pos, maxWinRem + 1);
-						StoreValueOfPosition(pos, lose);
+					} else if (childValue == lose) {
+						existsLoseChild = TRUE;
+						if (childRem < minLoseChildRem) {
+							minLoseChildRem = childRem;
+						}
+					} else if (childRem > maxWinChildRem) {
+						maxWinChildRem = childRem;
 					}
+				}
+				FreeMoveList(moves);
+				if (existsLoseChild) {
+					tierdbSetValueAndRemoteness(pos, win, minLoseChildRem + 1);
+				} else if (existsTieChild) {
+					if (minTieChildRem == REMOTENESS_MAX) {
+						tierdbSetValueAndRemoteness(pos, tie, REMOTENESS_MAX); // draw
+					} else {
+						tierdbSetValueAndRemoteness(pos, tie, minTieChildRem + 1); // else tie
+					}
+				} else {
+					tierdbSetValueAndRemoteness(pos, lose, maxWinChildRem + 1);
 				}
 			}
 		}
@@ -795,7 +791,7 @@ BOOLEAN dedupHashAdd(POSITION pos) {
 void SolveWithLoopyAlgorithm() {
 	ifprintf(gTierSolvePrint, "\n-----PREPARING LOOPY SOLVER-----\n");
 	POSITION pos, canonPos, child;
-	MOVELIST *moves, *movesptr;
+	MOVELIST *moves, *movesPtr;
 	VALUE value;
 	REMOTENESS remoteness;
 
@@ -808,41 +804,33 @@ void SolveWithLoopyAlgorithm() {
 				trueSizeOfTier++;
 				value = Primitive(pos);
 				if (value != undecided) { // check for primitive-ness
-					SetRemoteness(pos,0);
-					StoreValueOfPosition(pos,value);
+					SetRemoteness(pos, 0);
+					SetValue(pos, value);
 					numSolved++;
 					rInsertFR(value, pos, 0);
 				} else {
-					moves = movesptr = GenerateMoves(pos);
+					moves = GenerateMoves(pos);
 					if (dedupHash != NULL) {
 						dedupHashElem = 0LL;
 						memset(dedupHash, 0, dedupHashBytes);
 					}
-					if (moves == NULL) { // no chillins
-						printf("ERROR: GenerateMoves on %llu returned NULL\n", pos);
-						ExitStageRight();
-					} else {
-						//otherwise, make a Child Counter for it
-						movesptr = moves;
-						for (; movesptr != NULL; movesptr = movesptr->next) {
-							child = gSymmetries ? gCanonicalPosition(DoMove(pos, movesptr->move)) : DoMove(pos, movesptr->move);
-							if (gSymmetries && useUndo && !dedupHashAdd(child)) continue;
+					
+					for (movesPtr = moves; movesPtr != NULL; movesPtr = movesPtr->next) {
+						child = gSymmetries ? gCanonicalPosition(DoMove(pos, movesPtr->move)) : DoMove(pos, movesPtr->move);
+						if (!gSymmetries || !useUndo || dedupHashAdd(child)) {
 							childCounts[pos]++;
 
 							if (!useUndo) { // if parent pointers, add to parent pointer list
 								rParents[child] = StorePositionInList(pos, rParents[child]);
 							}
 						}
-						FreeMoveList(moves);
 					}
+					FreeMoveList(moves);
 				}
 			}
 		}
 	}
-	if (checkLegality) {
-		ifprintf(gTierSolvePrint, "True size of tier: %lld\n",trueSizeOfTier);
-		ifprintf(gTierSolvePrint, "Tier %llu's hash efficiency: %.1f%c\n",gCurrentTier, 100*(double)trueSizeOfTier/gCurrentTierSize, '%');
-	}
+	
 	ifprintf(gTierSolvePrint, "Amount now solved (primitives): %lld (%.1f%c)\n",numSolved, 100*(double)numSolved/trueSizeOfTier, '%');
 	if (numSolved == trueSizeOfTier) {
 		ifprintf(gTierSolvePrint, "Tier is all primitives! No loopy algorithm needed!\n");
@@ -851,40 +839,41 @@ void SolveWithLoopyAlgorithm() {
 	// SET UP FRONTIER!
 	ifprintf(gTierSolvePrint, "--Doing a sweep of child tiers, and setting up the frontier...\n");
 	for (pos = gCurrentTierSize; pos < gNumberOfPositions; pos++) {
-		if (!useUndo && rParents[pos] == NULL) // if we didn't even see this child, don't put it on frontier!
-			continue;
-		if (gSymmetries) {// use the canonical position's values
-			canonPos = gCanonicalPosition(pos);
-			if (useUndo && pos != canonPos)
-				continue;
-		} else {
-			canonPos = pos; // else ignore
+		if (useUndo || rParents[pos] != NULL) { // if we didn't see this child, don't put it on frontier
+			if (gSymmetries) { // use the canonical position's values
+				canonPos = gCanonicalPosition(pos);
+				if (useUndo && pos != canonPos)
+					continue;
+			} else {
+				canonPos = pos; // else ignore
+			}
+			tierdbGetValueAndRemoteness(canonPos, &value, &remoteness);
+			if (!((value == tie && remoteness == REMOTENESS_MAX) || value == undecided)) {
+				rInsertFR(value, pos, remoteness);
+			}
 		}
-		value = GetValueOfPosition(canonPos);
-		remoteness = Remoteness(canonPos);
-		if (!((value == tie && remoteness == REMOTENESS_MAX)
-		      || value == undecided))
-			rInsertFR(value, pos, remoteness);
 	}
 	tierdb_free_childpositions();
 	ifprintf(gTierSolvePrint, "\n--Beginning the loopy algorithm...\n");
 	REMOTENESS r; IPOSITIONLIST* list;
 	ifprintf(gTierSolvePrint, "--Processing Lose/Win Frontiers!\n");
 	for (r = 0; r <= REMOTENESS_MAX; r++) {
-		if (r!=REMOTENESS_MAX) {
-			list = rRemoveFRList(lose,r);
-			if (list != NULL)
+		if (r != REMOTENESS_MAX) {
+			list = rRemoveFRList(lose, r);
+			if (list != NULL) {
 				LoopyParentsHelper(list, win, r);
+			}
 		}
-		if (r!=0) {
-			list = rRemoveFRList(win,r-1);
-			if (list != NULL)
-				LoopyParentsHelper(list, lose, r-1);
+		if (r != 0) {
+			list = rRemoveFRList(win, r - 1);
+			if (list != NULL) {
+				LoopyParentsHelper(list, lose, r - 1);
+			}
 		}
 	}
 	ifprintf(gTierSolvePrint, "Amount now solved: %lld (%.1f%c)\n",numSolved, 100*(double)numSolved/trueSizeOfTier, '%');
-	if (numSolved == trueSizeOfTier)
-		return; // Else, we must process ties!
+	if (numSolved == trueSizeOfTier) return; // Else, we must process ties!
+
 	ifprintf(gTierSolvePrint, "--Processing Tie Frontier!\n");
 	for (r = 0; r < REMOTENESS_MAX; r++) {
 		list = rRemoveFRList(tie,r);
@@ -893,13 +882,11 @@ void SolveWithLoopyAlgorithm() {
 	}
 
 	ifprintf(gTierSolvePrint, "Amount now solved: %lld (%.1f%c)\n",numSolved, 100*(double)numSolved/trueSizeOfTier, '%');
-	if (numSolved == trueSizeOfTier)
-		return; // Else, we have undecideds... must make them DRAWs
+	if (numSolved == trueSizeOfTier) return; // Else, we have undecideds... must make them DRAWs
 	ifprintf(gTierSolvePrint, "--Setting undecided to DRAWs...\n");
-	for(pos = 0; pos < gCurrentTierSize; pos++) {
+	for (pos = 0; pos < gCurrentTierSize; pos++) {
 		if (childCounts[pos] > 0) { // no lose/tie children, no/some wins = draw
-			SetRemoteness(pos,REMOTENESS_MAX); // a draw
-			StoreValueOfPosition(pos, tie);
+			tierdbSetValueAndRemoteness(pos, tie, REMOTENESS_MAX);
 			numSolved++;
 		}
 	}
@@ -909,7 +896,7 @@ void SolveWithLoopyAlgorithm() {
 void LoopyParentsHelper(IPOSITIONLIST* list, VALUE valueParents, REMOTENESS remotenessChild) {
 	POSITION child, parent;
 	IFRnode *miniLoseFR = NULL;
-	UNDOMOVELIST *parents, *parentsPtr;
+	UNDOMOVELIST *undoMoves, *undoMovesPtr;
 	POSITIONLIST *parentList;
 
 	unsigned long long idx = 0;
@@ -917,29 +904,18 @@ void LoopyParentsHelper(IPOSITIONLIST* list, VALUE valueParents, REMOTENESS remo
 	while (idx < list->size) {
 		child = currISL->positions[idx & 1023];
 		idx++;
-		if ((idx & 1023) == 0)
+		if ((idx & 1023) == 0) {
 			currISL = currISL->next;
+		}
 		if (useUndo) { // use the UndoMove lists
-			parents = parentsPtr = gGenerateUndoMovesToTierFunPtr(child, gCurrentTier);
+			undoMoves = gGenerateUndoMovesToTierFunPtr(child, gCurrentTier);
 			if (dedupHash != NULL) {
 				dedupHashElem = 0LL;
 				memset(dedupHash, 0, dedupHashBytes);
 			}
-			for (; parentsPtr != NULL; parentsPtr = parentsPtr->next) {
-				parent = gSymmetries ? gCanonicalPosition(gUnDoMoveFunPtr(child, parentsPtr->undomove)) : gUnDoMoveFunPtr(child, parentsPtr->undomove);
-				if (gSymmetries && !dedupHashAdd(parent)) continue;
-				
-				if (parent >= gCurrentTierSize) {
-					TIERPOSITION tp; TIER t;
-					
-					gUnhashToTierPosition(parent, &tp, &t);
-					printf("ERROR: %llu generated undo-parent %llu (Tier: %llu, TierPosition: %llu),\n"
-					       "which is not in the current tier being solved!\n", child, parent, t, tp);
-					ExitStageRight();
-				}
-				// if childCounts is already 0, we don't mess with this parent
-				// (already dealt with OR illegal)
-				if (childCounts[parent] != 0) {
+			for (undoMovesPtr = undoMoves; undoMovesPtr != NULL; undoMovesPtr = undoMovesPtr->next) {
+				parent = gSymmetries ? gCanonicalPosition(gUnDoMoveFunPtr(child, undoMovesPtr->undomove)) : gUnDoMoveFunPtr(child, undoMovesPtr->undomove);
+				if ((!gSymmetries || dedupHashAdd(parent)) && childCounts[parent] != 0) {
 					// With losing children, every parent is winning, so we just go through
 					// all the parents and declare them winning.
 					// Same with tie children.
@@ -953,12 +929,11 @@ void LoopyParentsHelper(IPOSITIONLIST* list, VALUE valueParents, REMOTENESS remo
 						if (childCounts[parent] != 0) continue;
 						miniLoseFR = StorePositionInIList(parent, miniLoseFR);
 					}
-					SetRemoteness(parent, remotenessChild+1);
-					StoreValueOfPosition(parent, valueParents);
+					tierdbSetValueAndRemoteness(parent, valueParents, remotenessChild + 1);
 					numSolved++;
 				}
 			}
-			FreeUndoMoveList(parents);
+			FreeUndoMoveList(undoMoves);
 		} else { // use the parents pointers
 			parentList = rParents[child];
 			for (; parentList != NULL; parentList = parentList->next) {
@@ -966,21 +941,20 @@ void LoopyParentsHelper(IPOSITIONLIST* list, VALUE valueParents, REMOTENESS remo
 				if (childCounts[parent] != 0) {
 					if (valueParents == win || valueParents == tie) {
 						childCounts[parent] = 0;
-						rInsertFR(valueParents, parent, remotenessChild+1);
+						rInsertFR(valueParents, parent, remotenessChild + 1);
 					} else if (valueParents == lose) {
 						childCounts[parent] -= 1;
 						if (childCounts[parent] != 0) continue;
 						miniLoseFR = StorePositionInIList(parent, miniLoseFR);
 					}
-					SetRemoteness(parent, remotenessChild+1);
-					StoreValueOfPosition(parent, valueParents);
+					tierdbSetValueAndRemoteness(parent, valueParents, remotenessChild + 1);
 					numSolved++;
 				}
 			}
 		}
 		// if we inserted into LOSE, deal with them now
 		if (valueParents == lose && miniLoseFR != NULL) {
-			LoopyParentsHelper(miniLoseFR, win, remotenessChild+1); // will be freed here too
+			LoopyParentsHelper(miniLoseFR, win, remotenessChild + 1); // will be freed here too
 			miniLoseFR = NULL;
 		}
 	}

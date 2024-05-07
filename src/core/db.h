@@ -141,7 +141,7 @@ Allocate(void);
 /* Since the solvers will These will be deprecated soon */
 /* Value */
 VALUE           GetValueOfPosition      (POSITION pos);
-VALUE           StoreValueOfPosition    (POSITION pos, VALUE val);
+VALUE           SetValue    (POSITION pos, VALUE val);
 
 /* Remoteness */
 REMOTENESS      Remoteness              (POSITION pos);

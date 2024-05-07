@@ -169,7 +169,7 @@ VALUE DetermineLoopyValue1(POSITION position)
 						printf("Inserting " POSITION_FORMAT " (%s) remoteness = %d into win FR\n",parent,"win",remotenessChild+1);
 					}
 					SetRemoteness(parent, remotenessChild + 1);
-					StoreValueOfPosition(parent, win);
+					SetValue(parent, win);
 				} else {
 					/* We already know the parent is a winning position. */
 					if (GetValueOfPosition(parent) != win) {
@@ -205,7 +205,7 @@ VALUE DetermineLoopyValue1(POSITION position)
 					/* We always need to change the remoteness because we examine winning node with
 					** less remoteness first. */
 					SetRemoteness(parent, remotenessChild + 1);
-					StoreValueOfPosition(parent, lose);
+					SetValue(parent, lose);
 				}
 				F0EdgeCount++;
 			}
@@ -246,7 +246,7 @@ VALUE DetermineLoopyValue1(POSITION position)
 				InsertTieFR(parent);
 				if(kDebugDetermineValue) printf("Inserting " POSITION_FORMAT " (%s) remoteness = %d into win FR\n",parent,"tie",remotenessChild+1);
 				SetRemoteness(parent, remotenessChild + 1);
-				StoreValueOfPosition(parent,tie);
+				SetValue(parent,tie);
 				/*
 				   gNumberChildren[parent] -= 1;
 				   gNumberChildrenOriginal[parent] -=1; //As it is now, fringe0 can't have tie children
@@ -275,7 +275,7 @@ VALUE DetermineLoopyValue1(POSITION position)
 				printf(POSITION_FORMAT " was visited...",i);
 			if(GetValueOfPosition((POSITION)i) == undecided) {
 				SetRemoteness((POSITION)i, REMOTENESS_MAX); // Robert Shi: the "draw hack" is here!!!
-				StoreValueOfPosition((POSITION)i, tie); // Robert Shi: Draw positions are recorded as tie in REMOTENESS_MAX moves
+				SetValue((POSITION)i, tie); // Robert Shi: Draw positions are recorded as tie in REMOTENESS_MAX moves
 				if (gNumberChildren[i] < gNumberChildrenOriginal[i]) {
 					F0DrawEdgeCount += gNumberChildren[i];
 					F0NodeCount+=1;
@@ -341,7 +341,7 @@ void DFS_SetParents (POSITION parent, POSITION position)
 		else
 			BadElse("DetermineLoopyValue1 found primitive with value other than win/lose/tie");
 		/* Set the value */
-		StoreValueOfPosition(position,value);
+		SetValue(position,value);
 	} else { /* first time, need to recursively determine value */
 		/* PARENT me */
 		gParents[position] = StorePositionInList(parent, gParents[position]);
@@ -407,7 +407,7 @@ void SetParents (POSITION parent, POSITION root)
 		default:   BadElse("SetParents found primitive with value other than win/lose/tie");
 		}
 
-		StoreValueOfPosition(root, value);
+		SetValue(root, value);
 		return;
 	}
 
@@ -450,7 +450,7 @@ void SetParents (POSITION parent, POSITION root)
 					case tie: InsertTieFR(child);  break;
 					default: BadElse("SetParents found bad primitive value");
 					}
-					StoreValueOfPosition(child, value);
+					SetValue(child, value);
 				} else {
 					nextLevel = StorePositionInList(child, nextLevel);
 				}

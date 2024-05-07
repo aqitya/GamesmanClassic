@@ -157,7 +157,7 @@ VALUE lgas_DetermineLoopyValue1(POSITION position) {
 						InsertWinFR(parent);
 						if(kDebugDetermineValue) printf("Inserting " POSITION_FORMAT " (%s) remoteness = %d into win FR\n",parent,"win",remotenessChild+1);
 						SetRemoteness(parent, remotenessChild + 1);
-						StoreValueOfPosition(parent,win);
+						SetValue(parent,win);
 					}
 					else {
 						/* We already know the parent is a winning position. */
@@ -186,7 +186,7 @@ VALUE lgas_DetermineLoopyValue1(POSITION position) {
 					/* We always need to change the remoteness because we examine winning node with
 					** less remoteness first. */
 					SetRemoteness(parent, remotenessChild + 1);
-					StoreValueOfPosition(parent,lose);
+					SetValue(parent,lose);
 				}
 			} else {
 				BadElse("lgas_DetermineValue found FR member with other than win/lose value");
@@ -227,7 +227,7 @@ VALUE lgas_DetermineLoopyValue1(POSITION position) {
 				InsertTieFR(parent);
 				if(kDebugDetermineValue) printf("Inserting " POSITION_FORMAT " (%s) remoteness = %d into win FR\n",parent,"tie",remotenessChild+1);
 				SetRemoteness(parent, remotenessChild + 1);
-				StoreValueOfPosition(parent,tie);
+				SetValue(parent,tie);
 			}
 			ptr = ptr->next;
 		}
@@ -252,7 +252,7 @@ VALUE lgas_DetermineLoopyValue1(POSITION position) {
 				printf(POSITION_FORMAT " was visited...",i);
 			if(GetValueOfPosition((POSITION)i) == undecided) {
 				SetRemoteness((POSITION)i,REMOTENESS_MAX);
-				StoreValueOfPosition((POSITION)i,tie);
+				SetValue((POSITION)i,tie);
 				//we are done with this position and no longer need to keep around its list of parents
 				if (lgas_gParents[child]) FreePositionMoveList(lgas_gParents[child]);
 				if(kDebugDetermineValue)
@@ -296,7 +296,7 @@ void lgas_SetParents (POSITION parent, POSITION root)
 		default:   BadElse("lgas_SetParents found primitive with value other than win/lose/tie");
 		}
 
-		StoreValueOfPosition(root, value);
+		SetValue(root, value);
 		return;
 	}
 
@@ -325,7 +325,7 @@ void lgas_SetParents (POSITION parent, POSITION root)
 					case tie: InsertTieFR(child);  break;
 					default: BadElse("lgas_SetParents found bad primitive value");
 					}
-					StoreValueOfPosition(child, value);
+					SetValue(child, value);
 				} else {
 					nextLevel = StorePositionInList(child, nextLevel);
 				}

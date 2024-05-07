@@ -115,7 +115,7 @@ void loopyup_DeterminePrimitives() {
 	for (pos=0; pos<gNumberOfPositions; pos++) {
 		primitiveValue = Primitive(pos);
 		if (primitiveValue != undecided) {
-			StoreValueOfPosition(pos, primitiveValue);
+			SetValue(pos, primitiveValue);
 			MarkAsVisited(pos);
 			if (!loopyup_goAgain)
 				loopyup_childrenCount[pos] = 0;
@@ -381,7 +381,7 @@ void loopyup_StoreValueAndPropagate(POSITION pos, VALUE value, REMOTENESS remote
 	POSITION parent;
 
 	SetRemoteness(pos, remoteness);
-	StoreValueOfPosition(pos, value);
+	SetValue(pos, value);
 
 	phead = parents = GenerateParents(pos);
 	while(parents != NULL) {
@@ -415,7 +415,7 @@ void loopyup_CleanUpDatabase() {
 		UnMarkAsVisited(pos);
 		if (GetValueOfPosition(pos) == undecided) {
 			SetRemoteness(pos, REMOTENESS_MAX);
-			StoreValueOfPosition(pos, tie);
+			SetValue(pos, tie);
 		}
 	}
 }

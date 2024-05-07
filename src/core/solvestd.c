@@ -62,7 +62,7 @@ VALUE DetermineValueSTD(POSITION position)
 			MexStore(position,MexPrimitive(value)); /* lose=0, win=* */
 		else if (kPartizan && gPutWinBy && !gTwoBits)
 			WinByStore(position,gPutWinBy(position));
-		return(StoreValueOfPosition(position,value));
+		return(SetValue(position,value));
 		/* first time, need to recursively determine value */
 	} else {
 		MarkAsVisited(position);
@@ -136,15 +136,15 @@ VALUE DetermineValueSTD(POSITION position)
 		}
 		if(foundLose) {
 			SetRemoteness(position,minRemoteness+1); /* Winners want to mate soon! */
-			return(StoreValueOfPosition(position,win));
+			return(SetValue(position,win));
 		}
 		else if(foundTie) {
 			SetRemoteness(position,minTieRemoteness+1); /* Tiers want to mate now! */
-			return(StoreValueOfPosition(position,tie));
+			return(SetValue(position,tie));
 		}
 		else if (foundWin) {
 			SetRemoteness(position,maxRemoteness+1); /* Losers want to extend! */
-			return(StoreValueOfPosition(position,lose));
+			return(SetValue(position,lose));
 		}
 		else
 			BadElse("DetermineValue[2]. GenereateMoves most likely didnt return anything.");

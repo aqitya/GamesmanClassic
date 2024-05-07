@@ -7,5 +7,7 @@ BOOLEAN tierdb_reinit (DB_Table*);
 void tierdb_free_childpositions();
 int CheckTierDB     (TIER, int);
 BOOLEAN tierdb_load_minifile (char*);
+void tierdbGetValueAndRemoteness(POSITION pos, VALUE *v, REMOTENESS *r);
+void tierdbSetValueAndRemoteness(POSITION pos, VALUE v, REMOTENESS r);
 
 #endif /* GMCORE_TIERDB_H */

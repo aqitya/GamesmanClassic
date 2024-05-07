@@ -412,7 +412,7 @@ void VSSetParents (POSITION parent, POSITION root)
 		default:   BadElse("SetParents found primitive with value other than win/lose/tie");
 		}
 
-		StoreValueOfPosition(root, value);
+		SetValue(root, value);
 		return;
 	}
 
@@ -449,7 +449,7 @@ void VSSetParents (POSITION parent, POSITION root)
 					case tie: VSInsertTieFR(child);  break;
 					default: BadElse("SetParents found bad primitive value");
 					}
-					StoreValueOfPosition(child, value);
+					SetValue(child, value);
 				} else {
 					nextLevel = StorePositionInList(child, nextLevel);
 				}

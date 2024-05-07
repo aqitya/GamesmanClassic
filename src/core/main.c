@@ -208,7 +208,7 @@ VALUE DetermineValue(POSITION position)
 		// Ken Elkabany removed the line below, tell him if you want to undo it
 		// bpdb will not work with it since it doesn't allocate itself until gSolver(position)
 		// is called
-		//StoreValueOfPosition(position, undecided);
+		//SetValue(position, undecided);
 		gSolver(position);
 		showStatus(Clean);
 		AnalysisCollation();

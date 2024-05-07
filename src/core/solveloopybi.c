@@ -129,7 +129,7 @@ POSITIONSTACK *InitializeFrontier(POSITION source) {
 			SetRemoteness(position, 0);
 
 			/* Store value of position */
-			StoreValueOfPosition(position, value);
+			SetValue(position, value);
 
 			/* Add position to frontier */
 			push(position, &frontier);
