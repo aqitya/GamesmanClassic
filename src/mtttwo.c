@@ -226,7 +226,7 @@ void InitializeGame() {
 	/********************************/
 
 	gCanonicalPosition = GetCanonicalPosition;
-  gSymmetries = TRUE;
+  gSymmetries = FALSE;//TRUE;
 
 	kSupportsTierGamesman = TRUE;
 	kExclusivelyTierGamesman = TRUE;

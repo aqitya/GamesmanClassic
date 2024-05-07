@@ -11,6 +11,9 @@
 **
 **************************************************************************/
 
+// For instructions on how to play Topitop, see the following link:
+// https://github.com/GamesCrafters/Explainers/blob/master/instructions/en/games/topitop.xml
+
 #include "gamesman.h"
 
 /* Defines */
@@ -35,13 +38,10 @@
 #define BLANKDISPLAY "     "
 
 #define NULLMOVE 0b1111111111
-/***/
 
 POSITION gNumberOfPositions = 0;
 POSITION kBadPosition = -1;
-
 POSITION gInitialPosition = 0;
-POSITION gMinimalPosition = 0;
 
 int gSymmetryMatrix[8][9] = {
     {0,1,2,3,4,5,6,7,8},
@@ -101,96 +101,33 @@ BOOLEAN tyingRule = FALSE;
 VALUE ifNoLegalMoves = undecided;
 BOOLEAN isMisere = FALSE;
 
+CONST_STRING kHelpOnYourTurn = "";
+CONST_STRING kHelpStandardObjective = "";
 CONST_STRING kHelpGraphicInterface = "";
-
 CONST_STRING kHelpTextInterface = "";
-
-CONST_STRING kHelpOnYourTurn =
-"Each player takes turns making one valid move, also noting\n\
-that player CANNOT reverse an opponent's move that was just made.\n\
-Use the BOARD to determine which numbers to choose to\n\
-correspond to either a piece to place and a board slot to place it\n\
-OR to the location of your piece or a neutral piece and the empty\n\
-adjacent position you wish to move that piece to.\n\
-\n\
-VALID MOVES:\n\
-1.) Place 1 of your Buckets or 1 of the Small or Large Sand Piles\n\
-    on any free space of the board.\n\
-2.) Move 1 of your Buckets or any Small or Large Sand Pile already\n\
-    placed on the board from one square to another (one space at\n\
-    a time in any direction).\n\
-       a.) Any piece already on the board can be moved to an \n\
-           adjacent free space.\n\
-       b.) A Bucket can go on top of a Small Sand Pile.\n\
-       c.) A Small Sand Pile can go on top of a Large Sand Pile.\n\
-       d.) A Small Sand Pile with a Bucket on its top can go on\n\
-           top of a Large Sand Pile.\n\
-       e.) A Bucket can go on top of a Sand Castle.\n\
-    NOTE: You CANNOT place a piece on top of another piece.\n\
-          Pieces must be MOVED on top of other pieces.\n\
-3.) Move any combination of Sand Piles with your Buckets on top,\n\
-    or any Sand Castle, to any free space.";
-
-CONST_STRING kHelpStandardObjective =
-"Be the first to have your 2 Buckets on top of 2 Sand Castles,\n\
-where a Sand Castle consists of 1 Small Sand Pile put on top\n\
-of 1 Large Sand Pile.";
-
 CONST_STRING kHelpReverseObjective = "";
-
 CONST_STRING kHelpTieOccursWhen = "A tie never occurs.";
-
 CONST_STRING kHelpExample = "";
 
-/*************************************************************************
-**
-** Everything above here must be in every game file
-**
-**************************************************************************/
-
-void InitializeGame();
-void DebugMenu();
 char* unhashPosition(POSITION position, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft);
 POSITION hashPosition(char* board, char turn, int disallowedMove);
 void unhashMove(MOVE move, char *piece, int *from, int *to, BOOLEAN *p2Turn);
 MOVE hashMove(char piece, int from, int to, BOOLEAN p2Turn);
-void GameSpecificMenu();
-void SetTclCGameSpecificOptions(int theOptions[]);
-POSITION DoMove(POSITION position, MOVE move);
-void PrintComputersMove(MOVE computersMove, STRING computersName);
 char* PrintHelper(char piece, int level);
 void PrintPosition(POSITION position, STRING playerName, BOOLEAN usersTurn);
-MOVELIST *GenerateMoves(POSITION position);
 POSITION GetCanonicalPosition(POSITION position);
-USERINPUT GetAndPrintPlayersMove(POSITION thePosition, MOVE *theMove, STRING playerName);
-BOOLEAN ValidTextInput(STRING input);
-MOVE ConvertTextInputToMove(STRING input);
-STRING DisallowedMoveToString(int disallowedMove);
-int NumberOfOptions();
-int getOption();
-void setOption(int option);
 void PositionToString(POSITION position, char *positionStringBuffer);
 
 void countPiecesOnBoard(char *board, int *bb, int *rb, int *bs, int *rs, int *bc, int *rc, int *s, int *l, int *c);
-
-void unhashCacheInit();
-void hashCachePut(TIER tier, TIERPOSITION tierposition, char *board, char turn, int disallowedMove, int blueLeft, int redLeft, int smallLeft, int largeLeft);
-BOOLEAN hashCacheGet(TIER tier, POSITION tierposition, char *board, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft);
-
-
 void unhashTier(TIER tier, int *bb, int *rb, int *bs, int *rs, int *bc, int *rc, int *s, int *l, int *c);
 TIER hashTier(TIER bb, TIER rb, TIER bs, TIER rs, TIER bc, TIER rc, TIER s, TIER l, TIER c);
 TIERLIST* gTierChildren(TIER tier);
 TIERPOSITION gNumberOfTierPositions(TIER tier);
 STRING TierToString(TIER tier);
-
 POSITION fact(int n);
 char* unhashToBoard(TIER tier, TIERPOSITION tierposition, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft);
 TIERPOSITION numRearrangements(int length, int numBlanks, int bb, int rb, int bs, int rs, int bc, int rc, int s, int l, int c);
 void hashBoard(char *board, char turn, int disallowedMove, TIER *tier, TIERPOSITION *tierposition);
-BOOLEAN isLegal(POSITION position);
-
-int (*symmetriesToUse)[9];
 
 void InitializeGame() {
 
@@ -202,7 +139,6 @@ void InitializeGame() {
 	
 	gCanonicalPosition = GetCanonicalPosition;
 	gPositionToStringFunPtr = &PositionToString;
-
 	kSupportsTierGamesman = TRUE;
 	kExclusivelyTierGamesman = TRUE;
 	gInitialTier = 0;
@@ -210,82 +146,11 @@ void InitializeGame() {
 	gTierChildrenFunPtr = &gTierChildren;
 	gNumberOfTierPositionsFunPtr = &gNumberOfTierPositions;
 	gTierToStringFunPtr = &TierToString;
-	gIsLegalFunPtr = &isLegal;
-
-	symmetriesToUse = gSymmetryMatrix;
-	unhashCacheInit();
 }
 
 /////
 
-typedef struct {
-	TIER tier;
-	TIERPOSITION tierposition;
-	char board[9];
-	char turn;
-	int disallowedMove;
-	int blueLeft;
-	int redLeft;
-	int smallLeft;
-	int largeLeft;
-} UNHASH_RECORD;
-
-#define NUM_UNHASH_RECORDS 0b100000000000000
-#define UNHASH_MASK        0b011111111111111
-
-UNHASH_RECORD unhashRecords[NUM_UNHASH_RECORDS];
-
-int unhashCacheInited = 0;
-
-void unhashCacheInit() {
-	for (long i = 0; i < NUM_UNHASH_RECORDS; i++) {
-		unhashRecords[i].tierposition = -1LL;
-	}
-	unhashCacheInited = 1;
-}
-
-void hashCachePut(TIER tier, TIERPOSITION tierposition, char *board, char turn, int disallowedMove, int blueLeft, int redLeft, int smallLeft, int largeLeft) {
-	if (!unhashCacheInited) unhashCacheInit();
-
-	long i = tierposition & UNHASH_MASK;
-	if (unhashRecords[i].tier != tier ||
-		unhashRecords[i].tierposition != tierposition) {
-		unhashRecords[i].tier = tier;
-		unhashRecords[i].tierposition = tierposition;
-		memcpy(unhashRecords[i].board, board, 9);
-		unhashRecords[i].turn = turn;
-		unhashRecords[i].disallowedMove = disallowedMove;
-		unhashRecords[i].blueLeft = blueLeft;
-		unhashRecords[i].redLeft = redLeft;
-		unhashRecords[i].smallLeft = smallLeft;
-		unhashRecords[i].largeLeft = largeLeft;
-	}
-}
-
-// Returns TRUE if cache miss, otherwise FALSE
-BOOLEAN hashCacheGet(TIER tier, POSITION tierposition, char *board, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft) {
-	if (!unhashCacheInited) unhashCacheInit();
-
-	long i = tierposition & UNHASH_MASK;
-	if (unhashRecords[i].tier == tier &&
-		unhashRecords[i].tierposition == tierposition) {
-		memcpy(board, unhashRecords[i].board, 9);
-		(*turn) = unhashRecords[i].turn;
-		(*disallowedMove) = unhashRecords[i].disallowedMove;
-		(*blueLeft) = unhashRecords[i].blueLeft;
-		(*redLeft) = unhashRecords[i].redLeft;
-		(*smallLeft) = unhashRecords[i].smallLeft;
-		(*largeLeft) = unhashRecords[i].largeLeft;
-		return FALSE;
-	}
-	return TRUE;
-}
-
-/////
-
-void DebugMenu() {
-
-}
+void DebugMenu() {}
 
 POSITION fact(int n) {
     if (n <= 1) return 1;
@@ -518,10 +383,9 @@ char* unhashPosition(POSITION position, char *turn, int *disallowedMove, int *bl
 	if (gHashWindowInitialized) {
 		TIER tier; TIERPOSITION tierposition;
 		gUnhashToTierPosition(position, &tierposition, &tier);
-		//generic_hash_context_switch(tier);
 		char *board = unhashToBoard(tier, tierposition, turn, disallowedMove, blueLeft, redLeft, smallLeft, largeLeft);
 		return board;
-	} else { // Not supported.
+	} else {
 		return NULL;
 	}
 }
@@ -530,10 +394,9 @@ POSITION hashPosition(char* board, char turn, int disallowedMove) {
 	if (gHashWindowInitialized) {
 		TIER tier; TIERPOSITION tierposition;
 		hashBoard(board, turn, disallowedMove, &tier, &tierposition);
-		//generic_hash_context_switch(tier);
 		POSITION position = gHashToWindowPosition(tierposition, tier);
 		return position;
-	} else { // Not supported.
+	} else {
 		return 0;
 	}
 }
@@ -628,36 +491,6 @@ TIERLIST* gTierChildren(TIER tier) {
 	return list;
 }
 
-BOOLEAN isLegal(POSITION position) {
-	char turn;
-	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
-	char *board = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
-
-	if (disallowedMove == 0) {
-		SafeFree(board);
-		return TRUE;
-	}
-
-	int prevTo = idsToMoves[0][disallowedMove]; // They are switched
-	int prevFrom = idsToMoves[1][disallowedMove];
-
-	if (board[prevFrom] != BLANKPIECE || board[prevTo] == BLANKPIECE) {
-		SafeFree(board);
-		return FALSE;
-	}
- 
-	if (turn == BLUE && (board[prevTo] == BLUEBUCKETPIECE || board[prevTo] == BLUESMALLPIECE || board[prevTo] == BLUECASTLEPIECE)) {
-		SafeFree(board);
-		return FALSE;
-	} else if (turn == RED && (board[prevTo] == REDBUCKETPIECE || board[prevTo] == REDSMALLPIECE || board[prevTo] == REDCASTLEPIECE)) {
-		SafeFree(board);
-		return FALSE;
-	}
-
-	SafeFree(board);
-	return TRUE;
-}
-
 TIERPOSITION gNumberOfTierPositions(TIER tier) {
 	int bb, rb, bs, rs, bc, rc, s, l, c;
 	unhashTier(tier, &bb, &rb, &bs, &rs, &bc, &rc, &s, &l, &c);
@@ -720,19 +553,7 @@ MOVE hashMove(char piece, int from, int to, BOOLEAN p2Turn) {
 	return theHash;
 }
 
-/************************************************************************
-**
-** NAME: GameSpecificMenu
-**
-** DESCRIPTION: Menu used to change game-specific parmeters, such as
-** the side of the board in an nxn Nim board, etc. Does
-** nothing if kGameSpecificMenu == FALSE
-**
-************************************************************************/
-
 void GameSpecificMenu() {
-	char GetMyChar();
-
 	do {
 		printf("\n\t----- Game-specific options for %s -----\n\n\n", kGameName);
 
@@ -768,48 +589,11 @@ void GameSpecificMenu() {
 	} while(TRUE);
 }
 
-/************************************************************************
-**
-** NAME:        NumberOfOptions
-**
-** DESCRIPTION: Calculates and returns the number of variants
-**              your game supports.
-**
-** OUTPUTS:     int : Number of Game Variants
-**
-************************************************************************/
-
-int NumberOfOptions() {
-	return 8;
-}
-
-
-/************************************************************************
-**
-** NAME:        getOption
-**
-** DESCRIPTION: A hash function that returns a number corresponding
-**              to the current variant of the game.
-**              Each set of variants needs to have a different number.
-**
-** OUTPUTS:     int : the number representation of the options.
-**
-************************************************************************/
+int NumberOfOptions() { return 8; }
 
 int getOption() {
 	return (isMisere << 2) | (tyingRule << 1) | (ifNoLegalMoves == lose);
 }
-
-/************************************************************************
-**
-** NAME:        setOption
-**
-** DESCRIPTION: The corresponding unhash function for game variants.
-**              Unhashes option and sets the necessary variants.
-**
-** INPUT:       int option : the number representation of the options.
-**
-************************************************************************/
 
 void setOption(int option) {
 	ifNoLegalMoves = (option & 0b1) ? lose : undecided;
@@ -817,34 +601,7 @@ void setOption(int option) {
 	isMisere = (option & 0b100) ? TRUE : FALSE;
 }
 
-/************************************************************************
-**
-** NAME: SetTclCGameSpecificOptions
-**
-** DESCRIPTION: Set the C game-specific options (called from Tcl)
-** Ignore if you don't care about Tcl for now.
-**
-************************************************************************/
-void SetTclCGameSpecificOptions(int theOptions[])
-{
-	(void)theOptions;
-}
-
-/************************************************************************
-**
-** NAME: DoMove
-**
-** DESCRIPTION: Apply the move to the position.
-**
-** INPUTS: POSITION position : The old position
-** MOVE move : The move to apply.
-**
-** OUTPUTS: (POSITION) : The position that results after the move.
-**
-** CALLS: PositionToBlankOX(POSITION,*BlankOX)
-** BlankOX WhosTurn(*BlankOX)
-**
-************************************************************************/
+void SetTclCGameSpecificOptions(int theOptions[]) { (void) theOptions; }
 
 POSITION DoMove(POSITION position, MOVE move) {
 	char turn;
@@ -1042,7 +799,13 @@ void PrintPosition(POSITION position, STRING playerName, BOOLEAN usersTurn) {
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
 	char *board = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
-	char *strDisallowedMove = DisallowedMoveToString(disallowedMove);
+	
+	char strDisallowedMove[7];
+	if (disallowedMove == 0) {
+		sprintf(strDisallowedMove, "None");
+	} else {
+		sprintf(strDisallowedMove, "%d-%d", idsToMoves[0][disallowedMove] + 1, idsToMoves[1][disallowedMove] + 1);
+	}
 
 	printf("\n");
 	printf("        *-------*-------*-------*\n");
@@ -1060,7 +823,6 @@ void PrintPosition(POSITION position, STRING playerName, BOOLEAN usersTurn) {
 	printf("        *-------*-------*-------*\n\n");
 
 	SafeFree(board);
-	SafeFree(strDisallowedMove);
 }
 
 MOVELIST *GenerateMoves(POSITION position) {
@@ -1115,20 +877,6 @@ MOVELIST *GenerateMoves(POSITION position) {
 	return moveList;
 }
 
-/************************************************************************
-**
-** NAME: GetCanonicalPosition
-**
-** DESCRIPTION: Go through all of the positions that are symmetrically
-** equivalent and return the SMALLEST, which will be used
-** as the canonical element for the equivalence set.
-**
-** INPUTS: POSITION position : The position return the canonical elt. of.
-**
-** OUTPUTS: POSITION : The canonical element of the set.
-**
-************************************************************************/
-
 POSITION GetCanonicalPosition(POSITION position) {
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
@@ -1141,8 +889,8 @@ POSITION GetCanonicalPosition(POSITION position) {
 
     for (int symmetryNum = 1; symmetryNum < 8; symmetryNum++)
         for (int i = 0; i < 9; i++) {
-            char pieceInSymmetry = originalBoard[symmetriesToUse[symmetryNum][i]];
-            char pieceInBest = originalBoard[symmetriesToUse[bestSymmetryNum][i]];
+            char pieceInSymmetry = originalBoard[gSymmetryMatrix[symmetryNum][i]];
+            char pieceInBest = originalBoard[gSymmetryMatrix[bestSymmetryNum][i]];
             if (pieceInSymmetry > pieceInBest) {
                 bestSymmetryNum = symmetryNum;
                 break;
@@ -1155,11 +903,11 @@ POSITION GetCanonicalPosition(POSITION position) {
 	}
     
     for (int i = 0; i < 9; i++) { // Transform the rest of the board.
-        canonBoard[i] = originalBoard[symmetriesToUse[bestSymmetryNum][i]];
+        canonBoard[i] = originalBoard[gSymmetryMatrix[bestSymmetryNum][i]];
 	}
 	
 	if (disallowedMove != 0) { // Transform disallowed move.
-		canonDisallowedMove = movesToIds[symmetriesToUse[bestSymmetryNum][idsToMoves[0][disallowedMove]]][symmetriesToUse[bestSymmetryNum][idsToMoves[1][disallowedMove]]];
+		canonDisallowedMove = movesToIds[gSymmetryMatrix[bestSymmetryNum][idsToMoves[0][disallowedMove]]][gSymmetryMatrix[bestSymmetryNum][idsToMoves[1][disallowedMove]]];
 	}
 
     canonPos = hashPosition(canonBoard, turn, canonDisallowedMove);
@@ -1168,25 +916,6 @@ POSITION GetCanonicalPosition(POSITION position) {
 
     return canonPos;
 }
-
-/************************************************************************
-**
-** NAME: GetAndPrintPlayersMove
-**
-** DESCRIPTION: This finds out if the player wanted an undo or abort or not.
-** If so, return Undo or Abort and don't change theMove.
-** Otherwise get the new theMove and fill the pointer up.
-**
-** INPUTS: POSITION *thePosition : The position the user is at.
-** MOVE theMove : The move to fill with user's move.
-** STRING playerName : The name of the player whose turn it is
-**
-** OUTPUTS: USERINPUT : Oneof( Undo, Abort, Continue )
-**
-** CALLS: ValidMove(MOVE, POSITION)
-** BOOLEAN PrintPossibleMoves(POSITION) ...Always True!
-**
-************************************************************************/
 
 USERINPUT GetAndPrintPlayersMove(POSITION position, MOVE *move, STRING playerName) {
 	USERINPUT input;
@@ -1204,40 +933,11 @@ USERINPUT GetAndPrintPlayersMove(POSITION position, MOVE *move, STRING playerNam
 	return Continue;
 }
 
-/************************************************************************
-**
-** NAME: ValidTextInput
-**
-** DESCRIPTION: Return TRUE iff the string input is of the right 'form'.
-** For example, if the user is allowed to select one slot
-** from the numbers 1-9, and the user chooses 0, it's not
-** valid, but anything from 1-9 IS, regardless if the slot
-** is filled or not. Whether the slot is filled is left up
-** to another routine.
-**
-** INPUTS: STRING input : The string input the user typed.
-**
-** OUTPUTS: BOOLEAN : TRUE iff the input is a valid text input.
-**
-************************************************************************/
-
 BOOLEAN ValidTextInput(STRING input) {
 	return (input[0] >= 49 && input[0] <= 57 && input[1] == '-' && input[2] >= 49 && input[2] <= 57 && input[3] == '\0') || // Movement
 			((input[0] == 'B' || input[0] == 'R' || input[0] == 'S' || input[0] == 'L' || input[0] == 'b' || input[0] == 'r' || input[0] == 's' || input[0] == 'l') && input[1] >= 49 && input[1] <= 57 && input[2] == '\0') || // Placement
 			strcmp(input, "None") == 0; // Pass Turn
 }
-
-/************************************************************************
-**
-** NAME: ConvertTextInputToMove
-**
-** DESCRIPTION: Convert the string input to the internal move representation.
-**
-** INPUTS: STRING input : The string input the user typed.
-**
-** OUTPUTS: MOVE : The move corresponding to the user's input.
-**
-************************************************************************/
 
 MOVE ConvertTextInputToMove(STRING input) {
 	char piece = BLUEBUCKETPIECE;
@@ -1266,26 +966,6 @@ MOVE ConvertTextInputToMove(STRING input) {
 	}
 }
 
-STRING DisallowedMoveToString(int disallowedMove) {
-	STRING moveString = (STRING) SafeMalloc(7);
-	if (disallowedMove == 0) {
-		sprintf(moveString, "None");
-	} else {
-		sprintf(moveString, "%d-%d", idsToMoves[0][disallowedMove] + 1, idsToMoves[1][disallowedMove] + 1);
-	}
-	return moveString;
-}
-
-/************************************************************************
-**
-** NAME: MoveToString
-**
-** DESCRIPTION: Returns the move as a STRING
-**
-** INPUTS: MOVE *move : The move to put into a string.
-**
-************************************************************************/
-
 void MoveToString(MOVE move, char *moveStringBuffer) {
 	char piece;
 	int from, to;
@@ -1301,17 +981,6 @@ void MoveToString(MOVE move, char *moveStringBuffer) {
 		}
 	}
 }
-
-/************************************************************************
-**
-** NAME: PrintComputersMove
-**
-** DESCRIPTION: Nicely format the computers move.
-**
-** INPUTS: MOVE computersMove : The computer's move.
-** STRING computersName : The computer's name.
-**
-************************************************************************/
 
 void PrintComputersMove(MOVE computersMove, STRING computersName) {
 	char str[10];
@@ -1365,7 +1034,6 @@ POSITION StringToPosition(char *positionString) {
 	if (ParseStandardOnelinePositionString(positionString, &turn, &board)) {
 		char turnChar = (turn == 1) ? BLUE : RED;
 		int disallowedMove = (board[9] == '\0') ? 0 : movesToIds[board[9] - '1'][board[10] - '1'];
-
 		TIER tier;
 		TIERPOSITION tierposition;
 		hashBoard(board, turnChar, disallowedMove, &tier, &tierposition);
