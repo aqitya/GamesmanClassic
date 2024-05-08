@@ -158,7 +158,7 @@ BOOLEAN tierdb_reinit(DB_Table *new_db) {
 	}
 }
 
-void tierdb_free_childpositions() {
+void tierdbFreeChildTiers() {
 	if (tierdb_array) {
 		tierdb_array = (tierdb_cellValue *) SafeRealloc(tierdb_array, gCurrentTierSize * sizeof(tierdb_cellValue));
 	}

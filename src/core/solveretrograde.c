@@ -334,7 +334,7 @@ BOOLEAN gotoNextTier() {
 	SafeFree(temp);
 	tiersSolved++;
 	PercentDone(AdvanceTier);
-	return (solveList != NULL);
+	return solveList != NULL;
 }
 
 // Alters solveList so that tier goes on Front of list
@@ -668,7 +668,7 @@ void SolveWithNonLoopyAlgorithm() {
 
 	ifprintf(gTierSolvePrint, "Doing a sweep of the tier, and solving it in one go...\n");
 	for (pos = 0; pos < gCurrentTierSize; pos++) { // Solve only parents
-		if ((!checkLegality || gIsLegalFunPtr(pos)) && (!gSymmetries || pos == gCanonicalPosition(pos))) {
+		if (!gSymmetries || pos == gCanonicalPosition(pos)) {
 			value = Primitive(pos);
 			if (value != undecided) { // check for primitive-ness
 				tierdbSetValueAndRemoteness(pos, value, 0);
@@ -799,33 +799,31 @@ void SolveWithLoopyAlgorithm() {
 	rInitFRStuff();
 	ifprintf(gTierSolvePrint, "--Doing a sweep of the tier, and setting up the frontier...\n");
 	for (pos = 0; pos < gCurrentTierSize; pos++) { // SET UP PARENTS
-		if (childCounts[pos] == 0) { // else, ignore this child, it was already solved
-			if (!gSymmetries || pos == gCanonicalPosition(pos)) {
-				trueSizeOfTier++;
-				value = Primitive(pos);
-				if (value != undecided) { // check for primitive-ness
-					tierdbSetValueAndRemoteness(pos, value, 0);
-					numSolved++;
-					rInsertFR(value, pos, 0);
-				} else {
-					moves = GenerateMoves(pos);
-					if (dedupHash != NULL) {
-						dedupHashElem = 0LL;
-						memset(dedupHash, 0, dedupHashBytes);
-					}
-					
-					for (movesPtr = moves; movesPtr != NULL; movesPtr = movesPtr->next) {
-						child = gSymmetries ? gCanonicalPosition(DoMove(pos, movesPtr->move)) : DoMove(pos, movesPtr->move);
-						if (!gSymmetries || !useUndo || dedupHashAdd(child)) {
-							childCounts[pos]++;
+		if (!gSymmetries || pos == gCanonicalPosition(pos)) {
+			trueSizeOfTier++;
+			value = Primitive(pos);
+			if (value != undecided) { // check for primitive-ness
+				tierdbSetValueAndRemoteness(pos, value, 0);
+				rInsertFR(value, pos, 0);
+				numSolved++;
+			} else {
+				moves = GenerateMoves(pos);
+				if (dedupHash != NULL) {
+					dedupHashElem = 0LL;
+					memset(dedupHash, 0, dedupHashBytes);
+				}
+				
+				for (movesPtr = moves; movesPtr != NULL; movesPtr = movesPtr->next) {
+					child = gSymmetries ? gCanonicalPosition(DoMove(pos, movesPtr->move)) : DoMove(pos, movesPtr->move);
+					if (!gSymmetries || !useUndo || dedupHashAdd(child)) {
+						childCounts[pos]++;
 
-							if (!useUndo) { // if parent pointers, add to parent pointer list
-								rParents[child] = StorePositionInList(pos, rParents[child]);
-							}
+						if (!useUndo) { // if parent pointers, add to parent pointer list
+							rParents[child] = StorePositionInList(pos, rParents[child]);
 						}
 					}
-					FreeMoveList(moves);
 				}
+				FreeMoveList(moves);
 			}
 		}
 	}
@@ -852,7 +850,7 @@ void SolveWithLoopyAlgorithm() {
 			}
 		}
 	}
-	tierdb_free_childpositions();
+	tierdbFreeChildTiers();
 	ifprintf(gTierSolvePrint, "\n--Beginning the loopy algorithm...\n");
 	REMOTENESS r; IPOSITIONLIST* list;
 	ifprintf(gTierSolvePrint, "--Processing Lose/Win Frontiers!\n");
@@ -876,8 +874,9 @@ void SolveWithLoopyAlgorithm() {
 	ifprintf(gTierSolvePrint, "--Processing Tie Frontier!\n");
 	for (r = 0; r < REMOTENESS_MAX; r++) {
 		list = rRemoveFRList(tie,r);
-		if (list != NULL)
+		if (list != NULL) {
 			LoopyParentsHelper(list, tie, r);
+		}
 	}
 
 	ifprintf(gTierSolvePrint, "Amount now solved: %lld (%.1f%c)\n",numSolved, 100*(double)numSolved/trueSizeOfTier, '%');
