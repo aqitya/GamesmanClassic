@@ -109,7 +109,7 @@ CONST_STRING kHelpReverseObjective = "";
 CONST_STRING kHelpTieOccursWhen = "A tie never occurs.";
 CONST_STRING kHelpExample = "";
 
-char* unhashPosition(POSITION position, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft);
+void unhashPosition(POSITION position, char *board, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft);
 POSITION hashPosition(char* board, char turn, int disallowedMove);
 void unhashMove(MOVE move, char *piece, int *from, int *to, BOOLEAN *p2Turn);
 MOVE hashMove(char piece, int from, int to, BOOLEAN p2Turn);
@@ -125,9 +125,7 @@ TIERLIST* gTierChildren(TIER tier);
 TIERPOSITION gNumberOfTierPositions(TIER tier);
 STRING TierToString(TIER tier);
 POSITION fact(int n);
-char* unhashToBoard(TIER tier, TIERPOSITION tierposition, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft);
 TIERPOSITION numRearrangements(int length, int numBlanks, int bb, int rb, int bs, int rs, int bc, int rc, int s, int l, int c);
-void hashBoard(char *board, char turn, int disallowedMove, TIER *tier, TIERPOSITION *tierposition);
 
 void InitializeGame() {
 
@@ -160,25 +158,33 @@ POSITION fact(int n) {
     return prod;
 }
 
-char* unhashToBoard(TIER tier, TIERPOSITION tierposition, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft) {
-	char *board = (char*) SafeMalloc(sizeof(char) * 9);
+TIERPOSITION numRearrangements(int length, int numBlanks, int bb, int rb, int bs, int rs, int bc, int rc, int s, int l, int c) {
+	if (numBlanks < 0 || bb < 0 || rb < 0 || bs < 0 || rs < 0 || bc < 0 || rc < 0 || s < 0 || l < 0 || c < 0) return 0;
+	if (length <= 1) return 1;
+	return fact(length) / (fact(numBlanks) * fact(bb) * fact(rb) * fact(bs) * fact(rs) * fact(bc) * fact(rc) * fact(s) * fact(l) * fact(c));
+}
+
+void unhashPosition(POSITION position, char *board, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft) {
+	TIER tier; TIERPOSITION tierPosition;
+	gUnhashToTierPosition(position, &tierPosition, &tier);
+
 	int bb, rb, bs, rs, bc, rc, s, l, c;
 	unhashTier(tier, &bb, &rb, &bs, &rs, &bc, &rc, &s, &l, &c);
 	int numBlanks = 9 - bb - rb - bs - rs - bc - rc - s - l - c;
 
-	(*disallowedMove) = tierposition % 41;
+	(*disallowedMove) = tierPosition % 41;
 	TIERPOSITION half = gNumberOfTierPositions(tier) >> 1;
-	(*turn) = (tierposition >= half) ? RED : BLUE;
+	(*turn) = (tierPosition >= half) ? RED : BLUE;
 	(*blueLeft) = 2 - bb - bs - bc;
 	(*redLeft) = 2 - rb - rs - rc;
 	(*smallLeft) = 4 - bs - rs - bc - rc - s - c;
 	(*largeLeft) = 4 - bc - rc - l - c;
 
-	tierposition -= (tierposition % 41);
-	if (tierposition >= half) {
-		tierposition -= half;
+	tierPosition -= (tierPosition % 41);
+	if (tierPosition >= half) {
+		tierPosition -= half;
 	}
-	tierposition /= 41;
+	tierPosition /= 41;
 
 	TIERPOSITION idxOfFirstBLUEBUCKETPIECE, idxOfFirstREDBUCKETPIECE, idxOfFirstSMALLPIECE, idxOfFirstLARGEPIECE, idxOfFirstBLUESMALLPIECE, idxOfFirstREDSMALLPIECE, idxOfFirstCASTLEPIECE, idxOfFirstBLUECASTLEPIECE, idxOfFirstREDCASTLEPIECE;
 	for (int i = 0; i < 9; i++) {
@@ -251,91 +257,83 @@ char* unhashToBoard(TIER tier, TIERPOSITION tierposition, char *turn, int *disal
 			idxOfFirstREDCASTLEPIECE = -1;
 		}
 
-		if (tierposition >= idxOfFirstREDCASTLEPIECE) {
+		if (tierPosition >= idxOfFirstREDCASTLEPIECE) {
 			board[i] = REDCASTLEPIECE;
 			rc--;
-			tierposition -= idxOfFirstREDCASTLEPIECE;
-		} else if (tierposition >= idxOfFirstBLUECASTLEPIECE) {
+			tierPosition -= idxOfFirstREDCASTLEPIECE;
+		} else if (tierPosition >= idxOfFirstBLUECASTLEPIECE) {
 			board[i] = BLUECASTLEPIECE;
 			bc--;
-			tierposition -= idxOfFirstBLUECASTLEPIECE;
-		} else if (tierposition >= idxOfFirstCASTLEPIECE) {
+			tierPosition -= idxOfFirstBLUECASTLEPIECE;
+		} else if (tierPosition >= idxOfFirstCASTLEPIECE) {
 			board[i] = CASTLEPIECE;
 			c--;
-			tierposition -= idxOfFirstCASTLEPIECE;
-		} else if (tierposition >= idxOfFirstREDSMALLPIECE) {
+			tierPosition -= idxOfFirstCASTLEPIECE;
+		} else if (tierPosition >= idxOfFirstREDSMALLPIECE) {
 			board[i] = REDSMALLPIECE;
 			rs--;
-			tierposition -= idxOfFirstREDSMALLPIECE;
-		} else if (tierposition >= idxOfFirstBLUESMALLPIECE) {
+			tierPosition -= idxOfFirstREDSMALLPIECE;
+		} else if (tierPosition >= idxOfFirstBLUESMALLPIECE) {
 			board[i] = BLUESMALLPIECE;
 			bs--;
-			tierposition -= idxOfFirstBLUESMALLPIECE;
-		} else if (tierposition >= idxOfFirstLARGEPIECE) {
+			tierPosition -= idxOfFirstBLUESMALLPIECE;
+		} else if (tierPosition >= idxOfFirstLARGEPIECE) {
 			board[i] = LARGEPIECE;
 			l--;
-			tierposition -= idxOfFirstLARGEPIECE;
-		} else if (tierposition >= idxOfFirstSMALLPIECE) {
+			tierPosition -= idxOfFirstLARGEPIECE;
+		} else if (tierPosition >= idxOfFirstSMALLPIECE) {
 			board[i] = SMALLPIECE;
 			s--;
-			tierposition -= idxOfFirstSMALLPIECE;
-		} else if (tierposition >= idxOfFirstREDBUCKETPIECE) {
+			tierPosition -= idxOfFirstSMALLPIECE;
+		} else if (tierPosition >= idxOfFirstREDBUCKETPIECE) {
 			board[i] = REDBUCKETPIECE;
 			rb--;
-			tierposition -= idxOfFirstREDBUCKETPIECE;
-		} else if (tierposition >= idxOfFirstBLUEBUCKETPIECE) {
+			tierPosition -= idxOfFirstREDBUCKETPIECE;
+		} else if (tierPosition >= idxOfFirstBLUEBUCKETPIECE) {
 			board[i] = BLUEBUCKETPIECE;
 			bb--;
-			tierposition -= idxOfFirstBLUEBUCKETPIECE;
+			tierPosition -= idxOfFirstBLUEBUCKETPIECE;
 		} else {
 			board[i] = BLANKPIECE;
 			numBlanks--;
 		}
-	}
-
-	return board;
+	}	
 }
 
-TIERPOSITION numRearrangements(int length, int numBlanks, int bb, int rb, int bs, int rs, int bc, int rc, int s, int l, int c) {
-	if (numBlanks < 0 || bb < 0 || rb < 0 || bs < 0 || rs < 0 || bc < 0 || rc < 0 || s < 0 || l < 0 || c < 0) return 0;
-	if (length <= 1) return 1;
-	return fact(length) / (fact(numBlanks) * fact(bb) * fact(rb) * fact(bs) * fact(rs) * fact(bc) * fact(rc) * fact(s) * fact(l) * fact(c));
-}
-
-void hashBoard(char *board, char turn, int disallowedMove, TIER *tier, TIERPOSITION *tierposition) {
+POSITION hashPosition(char* board, char turn, int disallowedMove) {
 	int bb, rb, bs, rs, bc, rc, s, l, c;
 	countPiecesOnBoard(board, &bb, &rb, &bs, &rs, &bc, &rc, &s, &l, &c);
-	(*tier) = hashTier(bb, rb, bs, rs, bc, rc, s, l, c);
-	(*tierposition) = 0;
+	TIER tier = hashTier(bb, rb, bs, rs, bc, rc, s, l, c);
+	TIERPOSITION tierPosition = 0;
 	int numBlanks = 9 - bb - rb - bs - rs - bc - rc - s - l - c;
 	for (int i = 0; i < 9; i++) {
 		switch(board[i]) {
 			case REDCASTLEPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs, bc - 1, rc, s, l, c);
+				tierPosition += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs, bc - 1, rc, s, l, c);
   				// fall through
 			case BLUECASTLEPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs, bc, rc, s, l, c - 1);
+				tierPosition += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs, bc, rc, s, l, c - 1);
   				// fall through
 			case CASTLEPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs - 1, bc, rc, s, l, c);
+				tierPosition += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs - 1, bc, rc, s, l, c);
   				// fall through
 			case REDSMALLPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks, bb, rb, bs - 1, rs, bc, rc, s, l, c);
+				tierPosition += numRearrangements(8 - i, numBlanks, bb, rb, bs - 1, rs, bc, rc, s, l, c);
   				// fall through
 			case BLUESMALLPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs, bc, rc, s, l - 1, c);
+				tierPosition += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs, bc, rc, s, l - 1, c);
   				// fall through
 			case LARGEPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs, bc, rc, s - 1, l, c);
+				tierPosition += numRearrangements(8 - i, numBlanks, bb, rb, bs, rs, bc, rc, s - 1, l, c);
   				// fall through
 			case SMALLPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks, bb, rb - 1, bs, rs, bc, rc, s, l, c);
+				tierPosition += numRearrangements(8 - i, numBlanks, bb, rb - 1, bs, rs, bc, rc, s, l, c);
   				// fall through
 			case REDBUCKETPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks, bb - 1, rb, bs, rs, bc, rc, s, l, c);
+				tierPosition += numRearrangements(8 - i, numBlanks, bb - 1, rb, bs, rs, bc, rc, s, l, c);
   				// fall through
 			case BLUEBUCKETPIECE:
-				(*tierposition) += numRearrangements(8 - i, numBlanks - 1, bb, rb, bs, rs, bc, rc, s, l, c);
+				tierPosition += numRearrangements(8 - i, numBlanks - 1, bb, rb, bs, rs, bc, rc, s, l, c);
   				// fall through
 			default:
 				break; 
@@ -374,31 +372,10 @@ void hashBoard(char *board, char turn, int disallowedMove, TIER *tier, TIERPOSIT
 		}
 	}
 
-	(*tierposition) *= 41;
-	(*tierposition) += ((turn == RED) ? (gNumberOfTierPositions((*tier)) >> 1) : 0);
-	(*tierposition) += disallowedMove;
-}
-
-char* unhashPosition(POSITION position, char *turn, int *disallowedMove, int *blueLeft, int *redLeft, int *smallLeft, int *largeLeft) {
-	if (gHashWindowInitialized) {
-		TIER tier; TIERPOSITION tierposition;
-		gUnhashToTierPosition(position, &tierposition, &tier);
-		char *board = unhashToBoard(tier, tierposition, turn, disallowedMove, blueLeft, redLeft, smallLeft, largeLeft);
-		return board;
-	} else {
-		return NULL;
-	}
-}
-
-POSITION hashPosition(char* board, char turn, int disallowedMove) {
-	if (gHashWindowInitialized) {
-		TIER tier; TIERPOSITION tierposition;
-		hashBoard(board, turn, disallowedMove, &tier, &tierposition);
-		POSITION position = gHashToWindowPosition(tierposition, tier);
-		return position;
-	} else {
-		return 0;
-	}
+	tierPosition *= 41;
+	tierPosition += ((turn == RED) ? (gNumberOfTierPositions(tier) >> 1) : 0);
+	tierPosition += disallowedMove;
+	return gHashToWindowPosition(tierPosition, tier);
 }
 
 void countPiecesOnBoard(char *board, int *bb, int *rb, int *bs, int *rs, int *bc, int *rc, int *s, int *l, int *c) {
@@ -606,12 +583,11 @@ void SetTclCGameSpecificOptions(int theOptions[]) { (void) theOptions; }
 POSITION DoMove(POSITION position, MOVE move) {
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
-	char *board = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
+	char board[9];
+	unhashPosition(position, board, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
 
 	if (move == NULLMOVE) {
-		position = hashPosition(board, (turn == BLUE) ? RED : BLUE, 0);
-		SafeFree(board);
-		return position;
+		return hashPosition(board, (turn == BLUE) ? RED : BLUE, 0);
 	}
 	
 	char piece;
@@ -678,24 +654,19 @@ POSITION DoMove(POSITION position, MOVE move) {
 		}
 		board[from] = BLANKPIECE;
 	}
-
-	position = hashPosition(board, (turn == BLUE) ? RED : BLUE, disallowedMove);
-
-	SafeFree(board);
-
-	return position;
+	return hashPosition(board, (turn == BLUE) ? RED : BLUE, disallowedMove);
 }
 
 VALUE Primitive(POSITION position) {
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
-	char *board = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
+	char board[9];
+	unhashPosition(position, board, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
 	int bb, rb, bs, rs, bc, rc, s, l, c;
 	countPiecesOnBoard(board, &bb, &rb, &bs, &rs, &bc, &rc, &s, &l, &c);
 	
 	if (bc == 2 || rc == 2) {
 		if (!tyingRule) {
-			SafeFree(board);
 			return (isMisere) ? win : lose;
 		} else {
 			if (bc == 2 && rc == 1) {
@@ -703,28 +674,23 @@ VALUE Primitive(POSITION position) {
 					if (board[i] == REDBUCKETPIECE) { // Check if red bucket piece is next to castle piece.
 						for (int j = 0; j < numAdjacencies[i]; j++) {
 							if (board[adjacencyMatrix[i][j]] == CASTLEPIECE) {
-								SafeFree(board);
 								return tie;
 							}
 						}
 					} else if (board[i] == REDSMALLPIECE) { // Check if red small piece is next to large piece.
 						for (int j = 0; j < numAdjacencies[i]; j++) {
 							if (board[adjacencyMatrix[i][j]] == LARGEPIECE) {
-								SafeFree(board);
 								return tie;
 							}
 						}
 					}
 				}
-				SafeFree(board);
 				return (isMisere) ? win : lose;
 
 			}
-			SafeFree(board);
 			return (isMisere) ? win : lose;
 		}
 	}
-	SafeFree(board);
 	if (ifNoLegalMoves == lose) {
 		MOVELIST *moveList = GenerateMoves(position);
 		if (moveList->move == NULLMOVE) {
@@ -798,7 +764,8 @@ char* PrintHelper(char piece, int level) {
 void PrintPosition(POSITION position, STRING playerName, BOOLEAN usersTurn) {
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
-	char *board = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
+	char board[9];
+	unhashPosition(position, board, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
 	
 	char strDisallowedMove[7];
 	if (disallowedMove == 0) {
@@ -821,8 +788,6 @@ void PrintPosition(POSITION position, STRING playerName, BOOLEAN usersTurn) {
 	printf("        | %s | %s | %s |  %s\n", PrintHelper(board[6], 1), PrintHelper(board[7], 1), PrintHelper(board[8], 1), GetPrediction(position, playerName, usersTurn));
 	printf("        | %s | %s | %s |\n", PrintHelper(board[6], 0), PrintHelper(board[7], 0), PrintHelper(board[8], 0));
 	printf("        *-------*-------*-------*\n\n");
-
-	SafeFree(board);
 }
 
 MOVELIST *GenerateMoves(POSITION position) {
@@ -830,16 +795,17 @@ MOVELIST *GenerateMoves(POSITION position) {
 
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
-	char *board = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
+	char board[9];
+	unhashPosition(position, board, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
 
 	for (int to = 0; to < 9; to++) {
 		if (board[to] == BLANKPIECE) {
 	
 			// PLACEMENT //
 			if (blueLeft > 0 && turn == BLUE)
-				moveList = CreateMovelistNode(hashMove(BLUEBUCKETPIECE, to, to, turn == RED), moveList);
+				moveList = CreateMovelistNode(hashMove(BLUEBUCKETPIECE, to, to, FALSE), moveList);
 			else if (redLeft > 0 && turn == RED)
-				moveList = CreateMovelistNode(hashMove(REDBUCKETPIECE, to, to, turn == RED), moveList);
+				moveList = CreateMovelistNode(hashMove(REDBUCKETPIECE, to, to, TRUE), moveList);
 
 			if (smallLeft > 0) moveList = CreateMovelistNode(hashMove(SMALLPIECE, to, to, FALSE), moveList);
       		if (largeLeft > 0) moveList = CreateMovelistNode(hashMove(LARGEPIECE, to, to, FALSE), moveList);
@@ -867,8 +833,6 @@ MOVELIST *GenerateMoves(POSITION position) {
 		}
 	}
 
-	SafeFree(board);
-
 	// Add passing move if no legal moves.
 	if (moveList == NULL) {
 		moveList = CreateMovelistNode(NULLMOVE, moveList);
@@ -880,11 +844,11 @@ MOVELIST *GenerateMoves(POSITION position) {
 POSITION GetCanonicalPosition(POSITION position) {
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
-	char *originalBoard = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
+	char originalBoard[9];
+	unhashPosition(position, originalBoard, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
 
 	char canonBoard[9];
 	int canonDisallowedMove = disallowedMove;
-    POSITION canonPos = position;
     int bestSymmetryNum = 0;
 
     for (int symmetryNum = 1; symmetryNum < 8; symmetryNum++)
@@ -898,7 +862,6 @@ POSITION GetCanonicalPosition(POSITION position) {
         };
 
     if (bestSymmetryNum == 0) {
-		SafeFree(originalBoard);
         return position;
 	}
     
@@ -910,21 +873,14 @@ POSITION GetCanonicalPosition(POSITION position) {
 		canonDisallowedMove = movesToIds[gSymmetryMatrix[bestSymmetryNum][idsToMoves[0][disallowedMove]]][gSymmetryMatrix[bestSymmetryNum][idsToMoves[1][disallowedMove]]];
 	}
 
-    canonPos = hashPosition(canonBoard, turn, canonDisallowedMove);
-	
-	SafeFree(originalBoard);
-
-    return canonPos;
+    return hashPosition(canonBoard, turn, canonDisallowedMove);
 }
 
 USERINPUT GetAndPrintPlayersMove(POSITION position, MOVE *move, STRING playerName) {
 	USERINPUT input;
 	do {
-		printf("%8s's move: (u)ndo", playerName);
-		printf(": ");
-
+		printf("%8s's move (u)ndo: ", playerName);
 		input = HandleDefaultTextInput(position, move, playerName);
-
 		if (input != Continue)
 			return input;
 	} while (TRUE);
@@ -941,16 +897,18 @@ BOOLEAN ValidTextInput(STRING input) {
 
 MOVE ConvertTextInputToMove(STRING input) {
 	char piece = BLUEBUCKETPIECE;
-	if (input[0] >= 49 && input[0] <= 57) {// Movement
+	if (input[0] >= 49 && input[0] <= 57) { // Movement
 		return hashMove(piece, input[0] - '1', input[2] - '1', FALSE);
 	} else if (input[0] == 'N' || input[0] == 'n') {
 		return NULLMOVE;
 	} else {
+		BOOLEAN isP2Turn = FALSE;
 		switch(input[0]) {
 			case 'B': case 'b':
 				piece = BLUEBUCKETPIECE;
 				break;
 			case 'R': case 'r':
+				isP2Turn = TRUE;
 				piece = REDBUCKETPIECE;
 				break;
 			case 'S': case 's':
@@ -962,7 +920,7 @@ MOVE ConvertTextInputToMove(STRING input) {
 			default:
 				break;
 		}
-		return hashMove(piece, input[1] - '1', input[1] - '1', FALSE);
+		return hashMove(piece, input[1] - '1', input[1] - '1', isP2Turn);
 	}
 }
 
@@ -1013,7 +971,8 @@ int uwapiArrowCoords[8][9] = {
 void PositionToString(POSITION position, char *positionStringBuffer) {
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
-	char *board = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
+	char board[9];
+	unhashPosition(position, board, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
 
 	positionStringBuffer[0] = turn == BLUE ? '1' : '2';
 	positionStringBuffer[1] = '_';
@@ -1025,7 +984,6 @@ void PositionToString(POSITION position, char *positionStringBuffer) {
 	} else {
 		positionStringBuffer[11] = '\0';
 	}
-	SafeFree(board);
 }
 
 POSITION StringToPosition(char *positionString) {
@@ -1034,11 +992,10 @@ POSITION StringToPosition(char *positionString) {
 	if (ParseStandardOnelinePositionString(positionString, &turn, &board)) {
 		char turnChar = (turn == 1) ? BLUE : RED;
 		int disallowedMove = (board[9] == '\0') ? 0 : movesToIds[board[9] - '1'][board[10] - '1'];
-		TIER tier;
-		TIERPOSITION tierposition;
-		hashBoard(board, turnChar, disallowedMove, &tier, &tierposition);
-		gInitializeHashWindow(tier, FALSE);
-		return tierposition;
+		int bb, rb, bs, rs, bc, rc, s, l, c;
+		countPiecesOnBoard(board, &bb, &rb, &bs, &rs, &bc, &rc, &s, &l, &c);
+		gInitializeHashWindow(hashTier(bb, rb, bs, rs, bc, rc, s, l, c), FALSE);
+		return hashPosition(board, turnChar, disallowedMove);
 	}
 	return NULL_POSITION;
 }
@@ -1049,7 +1006,8 @@ void PositionToAutoGUIString(POSITION position, char *autoguiPositionStringBuffe
 
 	char turn;
 	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
-	char *board = unhashPosition(position, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
+	char board[9];
+	unhashPosition(position, board, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
 	int i, j;
 
 	for (i = 0, j = 0; i < 9; i++, j += 6) {
@@ -1080,8 +1038,6 @@ void PositionToAutoGUIString(POSITION position, char *autoguiPositionStringBuffe
 			entityString[j + 5] = LARGEPIECE;
 		}
 	}
-
-	SafeFree(board);
 
 	int uturn = (turn == BLUE) ? 1 : 2;
 	entityString[54] = (disallowedMove == 0) ? '-' : idsToMoves[0][disallowedMove] + '1';

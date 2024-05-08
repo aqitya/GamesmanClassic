@@ -450,7 +450,7 @@ POSITION GetMyPosition() {
 ************************************************************************/
 
 void CheckRequiredTierGamesmanAPIFunctions() {
-	BOOLEAN cont;
+	BOOLEAN cont = TRUE;
 	ifprintf(gTierSolvePrint, "\n-----Checking the REQUIRED TIER GAMESMAN API Functions:-----\n\n");
 	if (gInitialTier == -1ULL) {
 		ifprintf(gTierSolvePrint, "-gInitialTier NOT GIVEN\n"); cont = FALSE;
