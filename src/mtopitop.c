@@ -117,6 +117,7 @@ char* PrintHelper(char piece, int level);
 void PrintPosition(POSITION position, STRING playerName, BOOLEAN usersTurn);
 POSITION GetCanonicalPosition(POSITION position);
 void PositionToString(POSITION position, char *positionStringBuffer);
+BOOLEAN isLegal(POSITION position);
 
 void countPiecesOnBoard(char *board, int *bb, int *rb, int *bs, int *rs, int *bc, int *rc, int *s, int *l, int *c);
 void unhashTier(TIER tier, int *bb, int *rb, int *bs, int *rs, int *bc, int *rc, int *s, int *l, int *c);
@@ -144,6 +145,7 @@ void InitializeGame() {
 	gTierChildrenFunPtr = &gTierChildren;
 	gNumberOfTierPositionsFunPtr = &gNumberOfTierPositions;
 	gTierToStringFunPtr = &TierToString;
+	gIsLegalFunPtr = &isLegal;
 }
 
 /////
@@ -172,19 +174,15 @@ void unhashPosition(POSITION position, char *board, char *turn, int *disallowedM
 	unhashTier(tier, &bb, &rb, &bs, &rs, &bc, &rc, &s, &l, &c);
 	int numBlanks = 9 - bb - rb - bs - rs - bc - rc - s - l - c;
 
+	(*turn) = (tierPosition & 1) ? RED : BLUE;
+	tierPosition >>= 1;
 	(*disallowedMove) = tierPosition % 41;
-	TIERPOSITION half = gNumberOfTierPositions(tier) >> 1;
-	(*turn) = (tierPosition >= half) ? RED : BLUE;
+	tierPosition /= 41;
+
 	(*blueLeft) = 2 - bb - bs - bc;
 	(*redLeft) = 2 - rb - rs - rc;
 	(*smallLeft) = 4 - bs - rs - bc - rc - s - c;
 	(*largeLeft) = 4 - bc - rc - l - c;
-
-	tierPosition -= (tierPosition % 41);
-	if (tierPosition >= half) {
-		tierPosition -= half;
-	}
-	tierPosition /= 41;
 
 	TIERPOSITION idxOfFirstBLUEBUCKETPIECE, idxOfFirstREDBUCKETPIECE, idxOfFirstSMALLPIECE, idxOfFirstLARGEPIECE, idxOfFirstBLUESMALLPIECE, idxOfFirstREDSMALLPIECE, idxOfFirstCASTLEPIECE, idxOfFirstBLUECASTLEPIECE, idxOfFirstREDCASTLEPIECE;
 	for (int i = 0; i < 9; i++) {
@@ -372,9 +370,8 @@ POSITION hashPosition(char* board, char turn, int disallowedMove) {
 		}
 	}
 
-	tierPosition *= 41;
-	tierPosition += ((turn == RED) ? (gNumberOfTierPositions(tier) >> 1) : 0);
-	tierPosition += disallowedMove;
+	tierPosition = tierPosition * 41 + disallowedMove;
+	tierPosition = (tierPosition << 1) | ((turn == RED) ? 1 : 0);
 	return gHashToWindowPosition(tierPosition, tier);
 }
 
@@ -466,6 +463,21 @@ TIERLIST* gTierChildren(TIER tier) {
 	if (bb > 0 && c > 0) list = CreateTierlistNode(hashTier(bb - 1, rb, bs, rs, bc + 1, rc, s, l, c - 1), list); // Blue + Castle = BlueCastle
 	if (rb > 0 && c > 0) list = CreateTierlistNode(hashTier(bb, rb - 1, bs, rs, bc, rc + 1, s, l, c - 1), list); // Red + Castle = RedCastle
 	return list;
+}
+
+BOOLEAN isLegal(POSITION position) {
+	char turn;
+	int disallowedMove, blueLeft, redLeft, smallLeft, largeLeft;
+	char board[9];
+	unhashPosition(position, board, &turn, &disallowedMove, &blueLeft, &redLeft, &smallLeft, &largeLeft);
+
+	if (disallowedMove == 0) {
+		return TRUE;
+	} else {
+		int prevTo = idsToMoves[0][disallowedMove]; // They are switched
+		int prevFrom = idsToMoves[1][disallowedMove];
+		return board[prevFrom] == BLANKPIECE && (board[prevTo] == SMALLPIECE || board[prevTo] == LARGEPIECE || board[prevTo] == CASTLEPIECE);
+	}
 }
 
 TIERPOSITION gNumberOfTierPositions(TIER tier) {
@@ -667,7 +679,7 @@ VALUE Primitive(POSITION position) {
 	
 	if (bc == 2 || rc == 2) {
 		if (!tyingRule) {
-			return (isMisere) ? win : lose;
+			return isMisere ? win : lose;
 		} else {
 			if (bc == 2 && rc == 1) {
 				for (int i = 0; i < 9; i++) {
@@ -685,17 +697,17 @@ VALUE Primitive(POSITION position) {
 						}
 					}
 				}
-				return (isMisere) ? win : lose;
+				return isMisere ? win : lose;
 
 			}
-			return (isMisere) ? win : lose;
+			return isMisere ? win : lose;
 		}
 	}
 	if (ifNoLegalMoves == lose) {
 		MOVELIST *moveList = GenerateMoves(position);
 		if (moveList->move == NULLMOVE) {
 			FreeMoveList(moveList);
-			return (isMisere) ? win : lose;
+			return isMisere ? win : lose;
 		}
 		FreeMoveList(moveList);
 	}

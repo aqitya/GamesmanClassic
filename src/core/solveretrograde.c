@@ -668,7 +668,7 @@ void SolveWithNonLoopyAlgorithm() {
 
 	ifprintf(gTierSolvePrint, "Doing a sweep of the tier, and solving it in one go...\n");
 	for (pos = 0; pos < gCurrentTierSize; pos++) { // Solve only parents
-		if (!gSymmetries || pos == gCanonicalPosition(pos)) {
+		if ((!checkLegality || gIsLegalFunPtr(pos)) && (!gSymmetries || pos == gCanonicalPosition(pos))) {
 			value = Primitive(pos);
 			if (value != undecided) { // check for primitive-ness
 				tierdbSetValueAndRemoteness(pos, value, 0);
@@ -799,7 +799,7 @@ void SolveWithLoopyAlgorithm() {
 	rInitFRStuff();
 	ifprintf(gTierSolvePrint, "--Doing a sweep of the tier, and setting up the frontier...\n");
 	for (pos = 0; pos < gCurrentTierSize; pos++) { // SET UP PARENTS
-		if (!gSymmetries || pos == gCanonicalPosition(pos)) {
+		if ((!checkLegality || gIsLegalFunPtr(pos)) && (!gSymmetries || pos == gCanonicalPosition(pos))) {
 			trueSizeOfTier++;
 			value = Primitive(pos);
 			if (value != undecided) { // check for primitive-ness
