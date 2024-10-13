@@ -5,14 +5,87 @@
 #define END_GAME_MOVE -9999
 #define INVALID_MOVE -10000
 
-CONST_STRING kAuthorName = "Aditya Tummala (ADI)";
-CONST_STRING kGameName = "Abrobad";
-CONST_STRING kDBName = "abrobad";
-BOOLEAN kLoopy = TRUE;
-BOOLEAN kTieIsPossible = TRUE;
+// Function prototypes
+POSITION HashBoard(int *board, int player);
+void UnhashBoard(POSITION hash, int *board, int *player);
+BOOLEAN IsAdjacentToOwnStone(int *board, int cell, int player);
+int FindNearestEmptyCell(int *board, int startCell, int direction);
+MOVE CreatePlaceMove(int cellIndex);
+MOVE CreateMoveStoneMove(int fromCell, int toCell);
+MOVE CreateEndGameMove(void);
+
+POSITION gInitialPosition = 0;
+POSITION gNumberOfPositions = 0;
+POSITION kBadPosition = -1;
+
+CONST_STRING kAuthorName         = "";
+CONST_STRING kGameName           = "";
+CONST_STRING kDBName             = "";
+STRING kDBNameVolatile           = NULL;
+
+BOOLEAN kPartizan                = TRUE;
+BOOLEAN kSupportsHeuristic       = FALSE;
+BOOLEAN kSupportsSymmetries      = FALSE;
+BOOLEAN kSupportsGraphics        = FALSE;
+BOOLEAN kDebugMenu               = FALSE;
+BOOLEAN kGameSpecificMenu        = TRUE;
+BOOLEAN kTieIsPossible           = TRUE;
+BOOLEAN kLoopy                   = TRUE;
+BOOLEAN kDebugDetermineValue     = FALSE;
+void*    gGameSpecificTclInit     = NULL;
+
+CONST_STRING kHelpGraphicInterface = "";
+
+CONST_STRING kHelpTextInterface = "";
+
+CONST_STRING kHelpOnYourTurn = "";
+
+CONST_STRING kHelpStandardObjective = "";
+
+CONST_STRING kHelpReverseObjective = "";
+
+CONST_STRING kHelpTieOccursWhen = "";
+
+CONST_STRING kHelpExample = "";
+
+
+void DebugMenu() {
+}
+
+USERINPUT GetAndPrintPlayersMove(POSITION thePosition, MOVE* theMove, STRING playerName) {
+    return 0;
+}
+
+void MoveToAutoGUIString() {
+}
+
+void MoveToString(MOVE move, char *moveStringBuffer) {
+}
+
+int NumberOfOptions() {
+    return 0;
+}
+
+void PositionToAutoGUIString() {
+}
+
+void PrintComputersMove(MOVE computersMove, STRING computersName) {
+}
+
+void PrintPosition(POSITION position, STRING playerName, BOOLEAN usersTurn) {
+}
+
+void StringToPosition() {
+}
+int getOption() {
+    return 0;
+}
+
+void setOption(int option) {
+}
+
 
 int numCells = 12;
-
 int board[MAX_CELLS];
 int adjacency[MAX_CELLS][MAX_ADJACENT];
 int numAdjacent[MAX_CELLS];
@@ -21,8 +94,6 @@ int currentPlayer = 1;
 
 void GameSpecificMenu() {
   char GetMyChar();
-
-  
 }
 
 void InitializeGame() {
