@@ -32,4 +32,6 @@ extern FRnode*          gTailTieFR;
 extern POSITIONLIST**   gParents;
 extern char*            gNumberChildren;
 
+extern POSITION gPositionsExplored;
+
 #endif /* GMCORE_SOLVELOOPY_H */

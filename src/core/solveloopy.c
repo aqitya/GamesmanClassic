@@ -48,7 +48,7 @@ POSITIONLIST**  gParents = NULL;        /* The Parent of each node in a list */
 char*           gNumberChildren = NULL; /* The Number of children (used for Loopy games) */
 char*       gNumberChildrenOriginal = NULL;
 
-
+// POSITION gPositionsExplored = 0;
 /*
 ** Local function prototypes
 */
@@ -106,6 +106,8 @@ VALUE DetermineLoopyValue(POSITION position)
 	// this call was causing memory leaks
 	ParentFree();
 	//FreeVisitedArray();
+
+	// printf("Total positions explored: " POSITION_FORMAT "\n", gPositionsExplored);
 
 	return value;
 }
@@ -397,6 +399,7 @@ void SetParents (POSITION parent, POSITION root)
 
 	// Check if the top is primitive.
 	MarkAsVisited(root);
+	// gPositionsExplored++; // COUNTER
 	gParents[root] = StorePositionInList(parent, gParents[root]);
 	if ((value = Primitive(root)) != undecided) {
 		SetRemoteness(root, 0);
@@ -441,6 +444,11 @@ void SetParents (POSITION parent, POSITION root)
 
 				if (Visited(child)) continue;
 				MarkAsVisited(child);
+				// gPositionsExplored++;
+
+				// if (gPositionsExplored % 500 == 0) {
+				// 	printf("Positions explored: " POSITION_FORMAT "\n", gPositionsExplored);
+				// }
 
 				if ((value = Primitive(child)) != undecided) {
 					SetRemoteness(child, 0);
